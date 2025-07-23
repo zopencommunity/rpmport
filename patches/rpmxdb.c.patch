@@ -1,0 +1,46 @@
+diff --git a/lib/backend/ndb/rpmxdb.c b/lib/backend/ndb/rpmxdb.c
+index e9c7233..ce4c8b4 100644
+--- a/lib/backend/ndb/rpmxdb.c
++++ b/lib/backend/ndb/rpmxdb.c
+@@ -18,13 +18,40 @@
+ #define htole32(x) OSSwapHostToLittleInt32(x)
+ #define le32toh(x) OSSwapLittleToHostInt32(x)
+ #else
+-#include <endian.h>
++// #include <endian.h>
++#include <sys/endian.h>
+ #endif /* __APPLE__ */
+ #include <libgen.h>
+ #include <dirent.h>
+ 
+ #include "rpmxdb.h"
+ 
++#ifdef __MVS__
++#include <stdint.h>
++#define htole16(x) __bswap16(x)
++#define le16toh(x) __bswap16(x)
++#define htole32(x) __bswap32(x)
++#define le32toh(x) __bswap32(x)
++#define htole64(x) __bswap64(x)
++#define le64toh(x) __bswap64(x)
++
++static __inline uint16_t __bswap16(uint16_t __x)
++{
++	return __x<<8 | __x>>8;
++}
++
++static __inline uint32_t __bswap32(uint32_t __x)
++{
++	return __x>>24 | __x>>8&0xff00 | __x<<8&0xff0000 | __x<<24;
++}
++
++static __inline uint64_t __bswap64(uint64_t __x)
++{
++	return __bswap32(__x)+0ULL<<32 | __bswap32(__x>>32);
++}
++
++#endif
++
+ typedef struct rpmxdb_s {
+     rpmpkgdb pkgdb;             /* main database */
+     char *filename;

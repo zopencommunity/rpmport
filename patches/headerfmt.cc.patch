@@ -1,0 +1,14 @@
+diff --git a/lib/headerfmt.cc b/lib/headerfmt.cc
+index f6cb9fa..f2a25b5 100644
+--- a/lib/headerfmt.cc
++++ b/lib/headerfmt.cc
+@@ -214,7 +214,8 @@ RPM_GNUC_PRINTF(2, 3)
+ static void hsaError(headerSprintfArgs hsa, const char *fmt, ...)
+ {
+     /* Use thread local buffer as headerFormat() errmsg arg is const */
+-    static __thread char *errbuf = NULL;
++    // static __thread char *errbuf = NULL;
++    static char *errbuf = NULL;
+ 
+     if (fmt == NULL) {
+ 	hsa->errmsg = NULL;
