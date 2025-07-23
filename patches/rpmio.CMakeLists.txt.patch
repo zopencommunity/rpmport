@@ -1,0 +1,96 @@
+diff --git a/rpmio/CMakeLists.txt b/rpmio/CMakeLists.txt
+index 3148522..e63bf57 100644
+--- a/rpmio/CMakeLists.txt
++++ b/rpmio/CMakeLists.txt
+@@ -1,14 +1,14 @@
+-add_library(librpmio SHARED)
++add_library(rpmio STATIC)
+ 
+-target_sources(librpmio PRIVATE
++target_sources(rpmio PRIVATE
+ 	argv.cc base64.cc digest.cc expression.cc macro.cc rpmhook.hh rpmhook.cc
+ 	rpmio.cc rpmlog.cc rpmmalloc.cc rgetopt.cc rpmpgp.cc rpmpgpval.hh
+ 	rpmsq.cc rpmsw.cc url.cc rpmio_internal.hh rpmvercmp.cc
+ 	rpmver.cc rpmstring.cc rpmfileutil.cc rpmglob.cc rpmkeyring.cc
+ 	rpmstrpool.cc rpmmacro_internal.hh rpmlua.cc rpmlua.hh lposix.cc
+ )
+-target_compile_definitions(librpmio PRIVATE RPM_CONFIGDIR="${RPM_CONFIGDIR}")
+-target_include_directories(librpmio 
++target_compile_definitions(rpmio PRIVATE RPM_CONFIGDIR="${RPM_CONFIGDIR}")
++target_include_directories(rpmio 
+     PRIVATE
+ 	${CMAKE_CURRENT_SOURCE_DIR}
+ 	${Intl_INCLUDE_DIRS}
+@@ -23,30 +23,30 @@ endif()
+ 
+ if (WITH_SEQUOIA)
+ 	pkg_check_modules(RPMSEQUOIA REQUIRED IMPORTED_TARGET rpm-sequoia>=1.8.0)
+-	target_sources(librpmio PRIVATE rpmpgp_sequoia.cc)
+-	target_link_libraries(librpmio PRIVATE PkgConfig::RPMSEQUOIA)
++	target_sources(rpmio PRIVATE rpmpgp_sequoia.cc)
++	target_link_libraries(rpmio PRIVATE PkgConfig::RPMSEQUOIA)
+ else()
+ 	if (WITH_LEGACY_OPENPGP)
+-		target_link_libraries(librpmio PRIVATE rpmpgp_legacy)
++		target_link_libraries(rpmio PRIVATE rpmpgp_legacy)
+ 	else()
+-		target_sources(librpmio PRIVATE rpmpgp_dummy.cc)
++		target_sources(rpmio PRIVATE rpmpgp_dummy.cc)
+ 	endif()
+ 	if (WITH_OPENSSL)
+ 		find_package(OpenSSL 1.0.2 REQUIRED)
+-		target_sources(librpmio PRIVATE digest_openssl.cc)
+-		target_link_libraries(librpmio PRIVATE OpenSSL::Crypto)
++		target_sources(rpmio PRIVATE digest_openssl.cc)
++		target_link_libraries(rpmio PRIVATE OpenSSL::Crypto)
+ 	else()
+ 		pkg_check_modules(LIBGCRYPT REQUIRED IMPORTED_TARGET libgcrypt)
+-		target_sources(librpmio PRIVATE digest_libgcrypt.cc)
+-		target_link_libraries(librpmio PRIVATE PkgConfig::LIBGCRYPT)
++		target_sources(rpmio PRIVATE digest_libgcrypt.cc)
++		target_link_libraries(rpmio PRIVATE PkgConfig::LIBGCRYPT)
+ 	endif()
+ endif()
+ 
+-set_target_properties(librpmio PROPERTIES
++set_target_properties(rpmio PROPERTIES
+ 	VERSION ${RPM_LIBVERSION}
+ 	SOVERSION ${RPM_SOVERSION}
+ )
+-target_link_libraries(librpmio PRIVATE
++target_link_libraries(rpmio PRIVATE
+ 	PkgConfig::POPT
+ 	LUA::LUA
+ 	ZLIB::ZLIB
+@@ -54,16 +54,26 @@ target_link_libraries(librpmio PRIVATE
+ )
+ 
+ if (ZSTD_FOUND)
+-	target_link_libraries(librpmio PRIVATE PkgConfig::ZSTD)
++	target_link_libraries(rpmio PRIVATE PkgConfig::ZSTD)
+ endif()
+ if (LIBLZMA_FOUND)
+-	target_link_libraries(librpmio PRIVATE PkgConfig::LIBLZMA)
++	target_link_libraries(rpmio PRIVATE PkgConfig::LIBLZMA)
+ endif()
+ if (BZIP2_FOUND)
+-	target_link_libraries(librpmio PRIVATE BZip2::BZip2)
++    target_link_libraries(rpmio PRIVATE ${BZIP2_LIBRARIES})
++    target_include_directories(rpmio PRIVATE ${BZIP2_INCLUDE_DIR})
++    
++    get_filename_component(BZIP2_LIB_DIR ${BZIP2_LIBRARIES} DIRECTORY)
++    target_link_directories(rpmio PRIVATE ${BZIP2_LIB_DIR})
++    
++    # message(STATUS "  BZIP2_LIBRARIES: ${BZIP2_LIBRARIES}")
++    # message(STATUS "  BZIP2_INCLUDE_DIR: ${BZIP2_INCLUDE_DIR}")
++    # message(STATUS "  BZIP2_LIB_DIR: ${BZIP2_LIB_DIR}")
+ endif()
++
++
+ if (OpenMP_C_FOUND)
+-        target_link_libraries(librpmio PRIVATE OpenMP::OpenMP_C)
++        target_link_libraries(rpmio PRIVATE OpenMP::OpenMP_C)
+ endif()
+ 
+-install(TARGETS librpmio EXPORT rpm-targets)
++install(TARGETS rpmio EXPORT rpm-targets)
