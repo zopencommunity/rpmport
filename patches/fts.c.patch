@@ -1,0 +1,67 @@
+diff --git a/misc/fts.c b/misc/fts.c
+index bf7fb45..0745592 100644
+--- a/misc/fts.c
++++ b/misc/fts.c
+@@ -37,12 +37,12 @@ static char sccsid[] = "@(#)fts.c	8.6 (Berkeley) 8/14/94";
+ #endif
+ 
+ /* Conditional to set up proper fstat64 implementation */
+-#if defined(hpux) || defined(sun) || (defined(__APPLE__) && defined(_DARWIN_FEATURE_ONLY_64_BIT_INODE))
++#if defined(hpux) || defined(sun) || (defined(__APPLE__) && defined(_DARWIN_FEATURE_ONLY_64_BIT_INODE)) || defined(_MVS_)
+ #   define FTS_FSTAT64(_fd, _sbp)   fstat((_fd), (_sbp))
+ #else
+ #   define FTS_FSTAT64(_fd, _sbp)   fstat64((_fd), (_sbp))
+ #endif
+-
++#   define stat64		stat
+ #if defined(_LIBC)
+ #include <sys/param.h>
+ #include <include/sys/stat.h>
+@@ -56,7 +56,7 @@ static char sccsid[] = "@(#)fts.c	8.6 (Berkeley) 8/14/94";
+ #else
+ 
+ /* Conditionals for working around non-GNU environments */
+-#if defined(hpux)
++#if defined(hpux) || defined(_MVS_)
+ #   define        _INCLUDE_POSIX_SOURCE
+ #   define __errno_location() 	(&errno)
+ #   define dirfd(dirp)		-1
+@@ -68,7 +68,7 @@ static char sccsid[] = "@(#)fts.c	8.6 (Berkeley) 8/14/94";
+ #endif
+ #if defined(__APPLE__)
+ #   define __errno_location()	(__error())
+-#if defined(_DARWIN_FEATURE_ONLY_64_BIT_INODE)
++#if defined(_DARWIN_FEATURE_ONLY_64_BIT_INODE) || defined(_MVS_)
+ #		define stat64	stat
+ #endif
+ #endif
+@@ -80,7 +80,8 @@ static char sccsid[] = "@(#)fts.c	8.6 (Berkeley) 8/14/94";
+ #include <dirent.h>
+ #include <errno.h>
+ #include "rpmfts.h"
+-#   define __set_errno(val) (*__errno_location ()) = (val)
++//  #   define __set_errno(val) (*__errno_location ()) = (val)
++#define __set_errno(val) (errno = (val))
+ #   define __open	open
+ #   define __close	close
+ #   define __fchdir	fchdir
+@@ -141,7 +142,8 @@ Fts_open(char * const * argv, int options,
+ 
+ 	/* Options check. */
+ 	if (options & ~FTS_OPTIONMASK) {
+-		__set_errno (EINVAL);
++        	__set_errno (EINVAL);
++	        
+ 		return (NULL);
+ 	}
+ 
+@@ -310,7 +312,8 @@ Fts_close(FTS * sp)
+ 		if (saved_errno != 0) {
+ 			/* Free up the stream pointer. */
+ 			free(sp);
+-			__set_errno (saved_errno);
++		//	__set_errno (saved_errno);
++			errno=saved_errno;
+ 			return (-1);
+ 		}
+ 	}

@@ -1,0 +1,20 @@
+diff --git a/rpmio/rpmglob.cc b/rpmio/rpmglob.cc
+index eb439ca..cbd4486 100644
+--- a/rpmio/rpmglob.cc
++++ b/rpmio/rpmglob.cc
+@@ -80,10 +80,13 @@ int rpmGlobPath(const char * pattern, rpmglobFlags flags,
+ 	argvAdd(argvPtr, pattern);
+ 	goto exit;
+     }
+-
++#ifdef GLOB_BRACE
+     gflags |= GLOB_BRACE;
+-    if (home != NULL && strlen(home) > 0) 
++#endif
++    if (home != NULL && strlen(home) > 0)
++#ifdef GLOB_TILDE 
+ 	gflags |= GLOB_TILDE;
++#endif
+ #if HAVE_GLOB_ONLYDIR
+     if (dir_only)
+ 	gflags |= GLOB_ONLYDIR;

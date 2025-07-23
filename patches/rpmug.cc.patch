@@ -1,0 +1,14 @@
+diff --git a/lib/rpmug.cc b/lib/rpmug.cc
+index 6093cd6..02867fc 100644
+--- a/lib/rpmug.cc
++++ b/lib/rpmug.cc
+@@ -25,7 +25,8 @@ struct rpmug_s {
+     unordered_map<string,gid_t> gnameMap;
+ };
+ 
+-static __thread struct rpmug_s *rpmug = NULL;
++// static __thread struct rpmug_s *rpmug = NULL;
++static struct rpmug_s *rpmug = NULL;
+ 
+ static const char *getpath(const char *bn, const char *dfl, char **dest)
+ {
