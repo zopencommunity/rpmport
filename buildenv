@@ -1,0 +1,75 @@
+# Update bump details accordingly. Use bump check to confirm.
+# bump: RPM-version /RPM_VERSION="(.*)"/ https://github.com/rpm-software-management/rpm.git|semver:*
+# RPM_VERSION="V.R.M" # Specify a stable release
+# export ZOPEN_STABLE_TAG="v${RPM_VERSION}"
+
+export ZOPEN_BUILD_LINE="STABLE"
+export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm.git"  
+export ZOPEN_STABLE_DEPS="cpio libgpgerror zstd popt readline lua pkgconfig cmake zlib unzip libarchive scdoc libgcrypt openssl sqlite bzip2 gzip xz gettext make autoconf automake libtool perl m4 tar gpg doxygen lz4" 
+
+export ZOPEN_DEV_URL="https://github.com/rpm-software-management/rpm.git"   
+export ZOPEN_STABLE_DEPS="libgpgerror  zstd popt readline lua pkgconfig cmake zlib unzip libarchive scdoc libgcrypt openssl sqlite bzip2 gzip xz gettext make autoconf automake libtool perl m4 tar gpg doxygen lz4"
+
+export ZOPEN_EXTRA_CFLAGS="-mzos-target=zosv2r5 -march=z13 -D_POSIX_C_SOURCE=200809L" 
+export ZOPEN_EXTRA_CPPFLAGS="-mzos-target=zosv2r5 -march=z13 -D_POSIX_C_SOURCE=200809L"  
+export ZOPEN_SYSTEM_PREREQS="zos25"
+export PKG_CONFIG_PATH="/data/zopen/usr/local/lib/pkgconfig"
+
+export ZOPEN_CATEGORIES="core utilities"
+
+export ZOPEN_RUNTIME_DEPS="bash"
+
+export ZOPEN_SYSTEM_PREREQ=""
+
+export ZOPEN_COMP="CLANG"
+export ZOPEN_BOOTSTRAP="skip" 
+export ZOPEN_CONFIGURE="cmake"  
+export ZOPEN_MAKE="zopen_build"
+
+zopen_build() {
+  # Change to release for debug
+  LIBPATH="$LPEG_HOME/lib:$LIBPATH" make "$@" CMAKE_INSTALL_PREFIX="$ZOPEN_INSTALL_DIR" CMAKE_BUILD_TYPE=Release CMAKE_EXTRA_FLAGS="-DEXTRA_CFLAGS=\"-isystem${ZOSLIB_HOME}/include $CPPFLAGS\" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${CXX}  -DCMAKE_C_COMPILER="$CC" -DCMAKE_C_FLAGS=\"${CPPFLAGS} ${CFLAGS}\" -DCMAKE_C_FLAGS_RELEASE=\"${CPPFLAGS} ${CFLAGS}\" -DCOMPILE_FLAGS=\"${CPPFLAGS} ${CFLAGS}\" -DCMAKE_CXX_FLAGS=\"${CPPFLAGS} ${CFLAGS}\"  -DCMAKE_CXX_LINK_LIBRARY_FLAG=\"${LDFLAGS}\"  -DCMAKE_C_LINK_LIBRARY_FLAG=\"${LDFLAGS}\" -DCMAKE_CXX_STANDARD_LIBRARIES=\"${LIBS}\"  -DCMAKE_C_STANDARD_LIBRARIES=\"${LIBS}\" -DPREFER_LUA=ON -DENABLE_LIBINTL=OFF -DLIBUV_INCLUDE_DIR=\"$LIBUV_HOME/include\" -DGETTEXT_INCLUDE_DIR="$GETTEXT_HOME/include" -DGETTEXT_LIBRARIES="$GETTEXT_HOME/lib"  -DLIBUV_LIBRARY=\"$LIBUV_HOME/lib\" -DLPEG_LIBRARY="$LPEG_HOME/lib/lpeg.x"" BUNDLED_CMAKE_FLAG="-DUSE_BUNDLED=OFF -DLIBUV_LIBRARIES="$LIBUV_HOME/lib" -DLIBUV_LIBRARY="$LIBUV_HOME/lib/libuv.a" -DLIBUV_INCLUDE_DIR="$LIBUV_HOME/include" -DUSE_BUNDLED_LUA=ON -DUSE_BUNDLED_LUV=ON -DUSE_BUNDLED_LUAJIT=OFF -DUSE_BUNDLED_TS=ON -DUSE_BUNDLED_TS_PARSERS=ON -DUSE_BUNDLED_LIBVTERM=ON -DUSE_BUNDLED_LPEG=OFF -DUSE_BUNDLED_LIBUV=OFF -DUSE_BUNDLED_MSGPACK=ON -DUSE_BUNDLED_UNIBILIUM=ON -DUSE_BUNDLED_UTF8PROC=ON -DENABLE_LIBINTL=OFF -DUSE_BUNDLED_GETTEXT=OFF" DEPS_CMAKE_FLAGS="-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD_LIBRARIES=\"${LIBS}\" -DCMAKE_CXX_STANDARD_LIBRARIES=\"${LIBS}\" -DCMAKE_CXX_LINK_LIBRARY_FLAG=\"${LDFLAGS}\"  -DCMAKE_C_LINK_LIBRARY_FLAG=\"${LDFLAGS}\"  -DZSTD_LIBRARY=\$ZSTD_HOME/lib/libzstd.a -DZSTD_INCLUDE_DIR=\$ZSTD_HOME/include "
+}
+
+zopen_check_results()
+{
+  dir="$1"
+  pfx="$2"
+  chk="$1/$2_check.log"
+
+  # Echo the following information to gauge build health
+  echo "actualFailures:0"
+  echo "totalTests:1"
+  echo "expectedFailures:0"
+  echo "expectedTotalTests:1"
+}
+export ZOPEN_CONFIGURE_OPTS="--install-prefix \$ZOPEN_INSTALL_DIR/ -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DCMAKE_SYSTEM_PREFIX_PATH=/data/zopen/usr/local/zopen/ -DZLIB_LIBRARY=\"\$ZLIB_HOME/lib/libz.a\" -DLUA_DIR=/data/zopen/usr/local/zopen/lua/lua -DLUA_LIBRARIES=/data/zopen/usr/local/zopen/lua/lua/lib/liblua.a -DLUA_INCLUDE_DIR=/data/zopen/usr/local/zopen/lua/lua-5.4.7.20250530_092323.zos/include -DBZIP2_INCLUDE_DIR=/data/zopen/usr/local/zopen/bzip2/bzip2/include -DBZIP2_LIBRARIES=/data/zopen/usr/local/zopen/bzip2/bzip2/lib/libbz2.a -DLIBARCHIVE_DIR=/data/zopen/usr/local/zopen/libarchive/libarchive -DLIBARCHIVE_INCLUDE_DIR=/data/zopen/usr/local/zopen/libarchive/libarchive/include -DLIBARCHIVE_LIBRARY=/data/zopen/usr/local/zopen/libarchive/libarchive/lib/libarchive.a -DMAGIC_LIBRARY=/data/work/rpm/fileport/file-5.46/src/.libs/libmagic.a -DMAGIC_INCLUDE_DIR=/data/work/rpm/fileport/file-5.46/src -DINTL_LIBRARY=/data/zopen/usr/local/zopen/gettext/gettext-0.21.20240922_014617.zos/lib/libintl.a -DINTL_INCLUDE_DIR=/data/zopen/usr/local/zopen/gettext/gettext-0.21.20240922_014617.zos/include/libintl.h -DWITH_READLINE=OFF  -DWITH_LIBELF=OFF -DWITH_LIBDW=OFF -DWITH_LIBLZMA=OFF -DENABLE_OPENMP=OFF -DWITH_CAP=OFF -DWITH_ACL=OFF -DWITH_AUDIT=OFF -DWITH_SELINUX=OFF -DWITH_SEQUOIA=OFF -DWITH_DBUS=OFF -DZSTD_INCLUDE_DIR=\"\${ZSTD_HOME}/include\" -DZSTD_LIBRARY=\"\${ZSTD_HOME}/lib\" -DHAVE_UNSHARE=OFF -DENABLE_PYTHON=OFF"
+
+zopen_append_to_env()
+{
+cat <<ZZ
+if [ ! -z "\$ZOPEN_IN_ZOPEN_BUILD" ]; then
+  export ZOPEN_EXTRA_CXXFLAGS="\${ZOPEN_EXTRA_CXXFLAGS} -I\$PWD/include"
+  export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\$PWD/lib"
+  export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -llua"
+  export PKG_CONFIG_PATH="/data/zopen/usr/local/lib/pkgconfig"
+  export PKG_CONFIG_PATH="/data/zopen/usr/local/zopen/popt/popt-master/lib/pkgconfig/"
+  export PKG_CONFIG_PATH="/data/work/rpm/libarchiveport/libarchive/build/pkgconfig"
+
+export PKG_CONFIG_PATH="/data/zopen/usr/local/zopen/popt/popt-master/lib/pkgconfig/:/data/zopen/usr/local/zopen/libarchive/lib/pkgconfig/:\${PKG_CONFIG_PATH}"
+
+
+  # Lua configuration for CMake
+  export LUA_DIR=/data/zopen/usr/local/zopen/lua/lua
+  export LUA_LIBRARIES=/data/zopen/usr/local/zopen/lua/lua/lib/liblua.a
+  export LUA_INCLUDE_DIR=/data/zopen/usr/local/zopen/lua/lua/include
+
+  # Libarchive configuration for CMake
+  export LIBARCHIVE_DIR=/data/zopen/usr/local/zopen/libarchive/libarchive
+  export LIBARCHIVE_LIBRARIES=/data/zopen/usr/local/zopen/libarchive/libarchive/lib/libarchive.a
+  export LIBARCHIVE_INCLUDE_DIR=/data/zopen/usr/local/zopen/libarchive/libarchive/include
+
+fi
+ZZ
+}
+
