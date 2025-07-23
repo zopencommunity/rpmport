@@ -1,0 +1,14 @@
+--- /dev/null	2022-09-28 17:05:09 -0500
++++ include/rpm/stpcpy_custom.h	2025-06-30 13:15:17 -0500
+@@ -0,0 +1,11 @@
++#include <stdio.h>
++#ifndef HAVE_STPCPY
++static char *stpcpy(char *dest, const char *src)
++{
++    while ((*dest = *src) != '\0') {
++        dest++;
++        src++;
++    }
++    return dest;
++}
++#endif
