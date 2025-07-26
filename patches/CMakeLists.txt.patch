@@ -1,0 +1,59 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 769fcd3..73de61e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -9,7 +9,7 @@ project(rpm
+
+ # user configurable stuff
+ option(ENABLE_CUTF8 "Enable C.UTF-8 as default locale" ON)
+-option(ENABLE_NLS "Enable native language support" ON)
++option(ENABLE_NLS "Enable native language support" OFF)
+ option(ENABLE_OPENMP "Enable OpenMP threading support" ON)
+ option(ENABLE_PYTHON "Enable Python bindings" ON)
+ option(ENABLE_PLUGINS "Enable plugin support" ON)
+@@ -196,15 +196,26 @@ set(REQFUNCS
+        mkstemp getcwd basename dirname realpath setenv unsetenv regcomp
+        utimes getline localtime_r statvfs getaddrinfo
+        openat mkdirat fstatat linkat symlinkat mkfifoat mknodat unlinkat
+-       renameat utimensat fchmodat fchownat stpcpy stpncpy
++       renameat utimensat fchmodat fchownat
+ )
+
+ find_package(PkgConfig REQUIRED)
+ find_package(Lua 5.2 REQUIRED)
+ find_package(ZLIB REQUIRED)
++
+ if (WITH_BZIP2)
+     find_package(BZip2 REQUIRED)
++    # Check if the target exists, if not create it
++endif()
++
++if(BZip2_FOUND AND NOT TARGET BZip2::BZip2)
++    add_library(BZip2::BZip2 UNKNOWN IMPORTED)
++    set_target_properties(BZip2::BZip2 PROPERTIES
++        IMPORTED_LOCATION "${BZIP2_LIBRARIES}"
++        INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
++    )
+ endif()
++
+ if (WITH_ICONV)
+     find_package(Iconv REQUIRED)
+ endif()
+@@ -391,7 +402,7 @@ if (LIBDW_FOUND)
+        set(HAVE_LIBDW 1)
+        check_library_exists(dw dwelf_elf_begin "" HAVE_DWELF_ELF_BEGIN)
+ endif()
+-
++set(HAVE_SETPROGNAME 1)
+ check_symbol_exists(GLOB_ONLYDIR "glob.h" HAVE_GLOB_ONLYDIR)
+ check_symbol_exists(major "sys/sysmacros.h" MAJOR_IN_SYSMACROS)
+ if (NOT MAJOR_IN_SYSMACROS)
+ @@ -553,7 +564,7 @@ install(FILES
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rpm
+ )
+
+-export(TARGETS librpm librpmio librpmbuild librpmsign
++export(TARGETS librpm rpmio librpmbuild librpmsign
+        FILE rpm-targets.cmake
+        NAMESPACE rpm::
+ )

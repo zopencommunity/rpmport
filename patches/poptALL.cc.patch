@@ -1,0 +1,13 @@
+diff --git a/lib/poptALL.cc b/lib/poptALL.cc
+index 100c13e..3d99874 100644
+--- a/lib/poptALL.cc
++++ b/lib/poptALL.cc
+@@ -13,6 +13,8 @@
+
+ #include "debug.h"
+
++#include <rpm/progname_fallback.h>
++
+ #define POPT_SHOWVERSION       -999
+ #define POPT_SHOWRC            -998
+ #define POPT_QUERYTAGS         -997

@@ -1,0 +1,12 @@
+diff --git a/include/rpm/CMakeLists.txt b/include/rpm/CMakeLists.txt
+index 4f58727..fc606e2 100644
+--- a/include/rpm/CMakeLists.txt
++++ b/include/rpm/CMakeLists.txt
+@@ -11,5 +11,7 @@ install(FILES
+        rpmbuild.h rpmspec.h rpmfc.h
+
+        rpmsign.h
++
++
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rpm
+ )

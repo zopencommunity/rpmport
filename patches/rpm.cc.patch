@@ -1,0 +1,22 @@
+diff --git a/tools/rpm.cc b/tools/rpm.cc
+index 6be1bf0..b950c27 100644
+--- a/tools/rpm.cc
++++ b/tools/rpm.cc
+@@ -7,6 +7,8 @@
+ #include <rpm/rpmstring.h>
+ #include <rpm/rpmts.h>
+
++#include <rpm/progname_fallback.h>
++
+ #include "cliutils.hh"
+
+ #include "debug.h"
+@@ -75,7 +77,7 @@ int main(int argc, char *argv[])
+     /* Set the major mode based on argv[0] */
+     if (rstreq(xgetprogname(), "rpmquery"))    bigMode = MODE_QUERY;
+     if (rstreq(xgetprogname(), "rpmverify")) bigMode = MODE_VERIFY;
+-
++
+     /* Jumpstart option from argv[0] if necessary. */
+     switch (bigMode) {
+     case MODE_QUERY:   qva->qva_mode = 'q';    break;
