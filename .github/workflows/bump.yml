@@ -1,0 +1,21 @@
+name: 'Automatic version updates'
+
+permissions:
+  contents: write
+  statuses: write
+  actions: read
+
+on:
+  schedule:
+    # minute hour dom month dow (UTC)
+    - cron: '00 15 * * *'
+  # enable manual trigger of version updates
+  workflow_dispatch:
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: zopencommunity/meta/actions@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.BUMP_TOKEN }}
