@@ -1,12 +1,12 @@
-diff --git a/lib/backend/ndb/rpmpkg.c b/lib/backend/ndb/rpmpkg.c
-index 37dd9f4..f94ef50 100644
---- a/lib/backend/ndb/rpmpkg.c
-+++ b/lib/backend/ndb/rpmpkg.c
-@@ -13,6 +13,7 @@
- #include <libgen.h>
- #include <dirent.h>
+diff --git a/rpmio/rpmver.cc b/rpmio/rpmver.cc
+index d81e650..5f64307 100644
+--- a/rpmio/rpmver.cc
++++ b/rpmio/rpmver.cc
+@@ -2,6 +2,7 @@
  
-+#include <rpm/flock_compat.h>
- #include "rpmpkg.h"
+ #include <rpm/rpmver.h>
+ #include <rpm/rpmstring.h>
++#include <rpm/stpcpy_custom.h>
+ #include <stdlib.h>
  
- static int rpmpkgVerifyblob(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned int blkoff, unsigned int blkcnt);
+ #include "debug.h"
