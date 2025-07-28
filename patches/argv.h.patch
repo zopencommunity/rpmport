@@ -5,7 +5,7 @@ index 9be46d4..e79d54e 100644
 @@ -183,6 +183,17 @@ int argvSplit(ARGV_t * argvp, const char * str, const char * seps);
   */
  char *argvJoin(ARGV_const_t argv, const char *sep);
-
+ 
 +#ifndef HAVE_STPCPY
 +static char *stpcpy(char *dest, const char *src)
 +{

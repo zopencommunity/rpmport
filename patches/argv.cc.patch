@@ -5,7 +5,7 @@ index 7815a70..d329e10 100644
 @@ -8,8 +8,6 @@
  #include <rpm/argv.h>
  #include <rpm/rpmstring.h>
-
+ 
 -#include "debug.h"
 -
  void argvPrint(const char * msg, ARGV_const_t argv, FILE * fp)
