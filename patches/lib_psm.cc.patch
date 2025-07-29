@@ -1,0 +1,35 @@
+diff --git a/lib/psm.cc b/lib/psm.cc
+index 8d68db1..a6aeca4 100644
+--- a/lib/psm.cc
++++ b/lib/psm.cc
+@@ -33,7 +33,7 @@
+ #include "rpmplugins.hh"
+ 
+ #include "debug.h"
+-
++#include<iostream>
+ struct rpmpsm_s {
+     rpmts ts;			/*!< transaction set */
+     rpmte te;			/*!< current transaction element */
+@@ -797,7 +797,9 @@ static rpmRC rpmpsmUnpack(rpmpsm psm)
+     if (fsmrc) {
+ 	char *emsg;
+ 	errno = saved_errno;
++	std::cout<<"lib_psm.cc before"<<std::endl;
+ 	emsg = rpmfileStrerror(fsmrc);
++	std::cout<<"lib_psm.cc after"<<std::endl;
+ 	rpmlog(RPMLOG_ERR,
+ 		_("unpacking of archive failed%s%s: %s\n"),
+ 		(failedFile != NULL ? _(" on file ") : ""),
+@@ -1039,9 +1041,11 @@ static rpmRC rpmPackageRestore(rpmts ts, rpmpsm psm)
+ 
+ 	if (!(rpmtsFlags(psm->ts) & RPMTRANS_FLAG_JUSTDB)) {
+ 	    if (rpmfilesFC(psm->files) > 0) {
++
+ 		int fsmrc = rpmPackageFilesInstall(psm->ts, psm->te, psm->files,
+ 					      psm, &failedFile);
+ 		rc = (fsmrc == 0) ? RPMRC_OK : RPMRC_FAIL;
++		std::cout << "brr Failed file: " << failedFile << std::endl;
+ 	    }
+ 	}
+ 

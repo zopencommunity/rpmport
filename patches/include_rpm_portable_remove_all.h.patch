@@ -1,5 +1,8 @@
---- /dev/null	2022-09-28 17:05:09 -0500
-+++ include/rpm/portable_remove_all.h	2025-07-01 13:53:20 -0500
+diff --git a/include/rpm/portable_remove_all.h b/include/rpm/portable_remove_all.h
+new file mode 100755
+index 0000000..89eea9a
+--- /dev/null
++++ b/include/rpm/portable_remove_all.h
 @@ -0,0 +1,45 @@
 +/* taken from patchfile https://github.com/zopencommunity/ccacheport/blob/cdbb97517b6884c7f57526fbb60562085809d85b/patches/PR1.patch#L101 */
 +#include <dirent.h>

@@ -1,0 +1,20 @@
+diff --git a/lib/CMakeLists.txt b/lib/CMakeLists.txt
+index 3674d0b..8a11bf3 100644
+--- a/lib/CMakeLists.txt
++++ b/lib/CMakeLists.txt
+@@ -1,4 +1,6 @@
+-add_library(librpm SHARED)
++add_library(librpm STATIC)
++target_link_libraries(librpm PRIVATE rpmio misc)
++
+ set_target_properties(librpm PROPERTIES
+ 	VERSION ${RPM_LIBVERSION}
+ 	SOVERSION ${RPM_SOVERSION}
+@@ -46,6 +48,7 @@ target_sources(librpm PRIVATE
+ 	rpmchroot.cc rpmchroot.hh
+ 	rpmplugins.cc rpmplugins.hh rpmug.cc rpmug.hh
+ 	rpmtriggers.hh rpmtriggers.cc rpmvs.cc rpmvs.hh
++	progname_fallback.c progname_fallback.h
+ )
+ 
+ if(ENABLE_SQLITE)

@@ -1,5 +1,8 @@
---- /dev/null	2022-09-28 17:05:09 -0500
-+++ include/rpm/flock_compat.h	2025-07-03 14:19:52 -0500
+diff --git a/include/rpm/flock_compat.h b/include/rpm/flock_compat.h
+new file mode 100755
+index 0000000..15ee5d5
+--- /dev/null
++++ b/include/rpm/flock_compat.h
 @@ -0,0 +1,30 @@
 +/*
 + * File locking constants compatibility header

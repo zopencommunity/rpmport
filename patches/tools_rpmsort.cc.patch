@@ -3,9 +3,9 @@ index 183fe69..69b9036 100644
 --- a/tools/rpmsort.cc
 +++ b/tools/rpmsort.cc
 @@ -10,6 +10,13 @@
-
+ 
  #define BUFSIZE 2048
-
+ 
 +#ifdef __MVS__
 +static inline char* strchrnul(const char* s, int c) {
 +    const char* p = strchr(s, c);

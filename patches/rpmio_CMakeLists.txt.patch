@@ -1,5 +1,5 @@
 diff --git a/rpmio/CMakeLists.txt b/rpmio/CMakeLists.txt
-index 3148522..e63bf57 100644
+index 3148522..229361c 100644
 --- a/rpmio/CMakeLists.txt
 +++ b/rpmio/CMakeLists.txt
 @@ -1,14 +1,14 @@
@@ -24,7 +24,7 @@ index 3148522..e63bf57 100644
 @@ -23,30 +23,30 @@ endif()
  
  if (WITH_SEQUOIA)
- 	pkg_check_modules(RPMSEQUOIA REQUIRED IMPORTED_TARGET rpm-sequoia>=1.9.0)
+ 	pkg_check_modules(RPMSEQUOIA REQUIRED IMPORTED_TARGET rpm-sequoia>=1.8.0)
 -	target_sources(librpmio PRIVATE rpmpgp_sequoia.cc)
 -	target_link_libraries(librpmio PRIVATE PkgConfig::RPMSEQUOIA)
 +	target_sources(rpmio PRIVATE rpmpgp_sequoia.cc)
@@ -62,7 +62,7 @@ index 3148522..e63bf57 100644
  	PkgConfig::POPT
  	LUA::LUA
  	ZLIB::ZLIB
-@@ -54,16 +54,26 @@ target_link_libraries(librpmio PRIVATE
+@@ -54,16 +54,19 @@ target_link_libraries(librpmio PRIVATE
  )
  
  if (ZSTD_FOUND)
@@ -77,16 +77,9 @@ index 3148522..e63bf57 100644
 -	target_link_libraries(librpmio PRIVATE BZip2::BZip2)
 +    target_link_libraries(rpmio PRIVATE ${BZIP2_LIBRARIES})
 +    target_include_directories(rpmio PRIVATE ${BZIP2_INCLUDE_DIR})
-+    
 +    get_filename_component(BZIP2_LIB_DIR ${BZIP2_LIBRARIES} DIRECTORY)
 +    target_link_directories(rpmio PRIVATE ${BZIP2_LIB_DIR})
-+    
-+    # message(STATUS "  BZIP2_LIBRARIES: ${BZIP2_LIBRARIES}")
-+    # message(STATUS "  BZIP2_INCLUDE_DIR: ${BZIP2_INCLUDE_DIR}")
-+    # message(STATUS "  BZIP2_LIB_DIR: ${BZIP2_LIB_DIR}")
  endif()
-+
-+
  if (OpenMP_C_FOUND)
 -        target_link_libraries(librpmio PRIVATE OpenMP::OpenMP_C)
 +        target_link_libraries(rpmio PRIVATE OpenMP::OpenMP_C)
