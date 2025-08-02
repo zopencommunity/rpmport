@@ -7,7 +7,7 @@ export ZOPEN_STABLE_DEPS="coreutils zstd unzip git gawk patch grep sed file xz t
 export ZOPEN_DEV_URL="https://github.com/rpm-software-management/rpm.git"   # Specify the dev build URL
 
 export ZOPEN_EXTRA_CFLAGS="-D_POSIX_C_SOURCE=200809L" 
-export ZOPEN_EXTRA_CPPFLAGS="-D_POSIX_C_SOURCE=200809L"  
+export ZOPEN_EXTRA_CPPFLAGS="-D_POSIX_C_SOURCE=200809L -D__XPLAT=1"  
 export ZOPEN_SYSTEM_PREREQS="zos25"
 export PKG_CONFIG_PATH="$ZOPEN_ROOTFS/usr/local/lib/pkgconfig"
 

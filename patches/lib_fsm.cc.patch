@@ -91,15 +91,6 @@ index 63580c2..e1e8047 100644
  enum filestage_e {
      FILE_COMMIT = -1,
      FILE_NONE   = 0,
-@@ -99,7 +165,7 @@ static int fsmLink(int odirfd, const char *opath, int dirfd, const char *path)
- static int cap_set_fileat(int dirfd, const char *path, cap_t fcaps)
- {
-     int fd = -1;
--    int rc = fsmOpenat(&fd, dirfd, path, O_RDONLY|O_NOFOLLOW, 0);
-+    int rc = fsmOpenat(&fd, dirfd, path, O_RDONLY, 0);
-     if (!rc) {
- 	rc = cap_set_fd(fd, fcaps);
- 	fsmClose(&fd);
 @@ -167,10 +233,13 @@ static int fsmOpen(int *wfdp, int dirfd, const char *dest)
  {
      int rc = 0;
@@ -133,8 +124,7 @@ index 63580c2..e1e8047 100644
  static int fsmOpenat(int *wfdp, int dirfd, const char *path, int flags, int dir)
  {
      struct stat lsb, sb;
--    int sflags = flags | O_NOFOLLOW;
-+    int sflags = flags ;// | O_NOFOLLOW;
+     int sflags = flags | O_NOFOLLOW;
 +    std::cout << "dh fsmOpenat dirfd --> 1 == "<< dirfd << std::endl;
 +    std::cout << "dh Path: " << path << std::endl;
      int fd = openat(dirfd, path, sflags);
