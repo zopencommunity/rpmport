@@ -2,15 +2,6 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 769fcd3..9a08c6a 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -9,7 +9,7 @@ project(rpm
- 
- # user configurable stuff
- option(ENABLE_CUTF8 "Enable C.UTF-8 as default locale" ON)
--option(ENABLE_NLS "Enable native language support" ON)
-+option(ENABLE_NLS "Enable native language support" OFF)
- option(ENABLE_OPENMP "Enable OpenMP threading support" ON)
- option(ENABLE_PYTHON "Enable Python bindings" ON)
- option(ENABLE_PLUGINS "Enable plugin support" ON)
 @@ -196,15 +196,26 @@ set(REQFUNCS
  	mkstemp getcwd basename dirname realpath setenv unsetenv regcomp
  	utimes getline localtime_r statvfs getaddrinfo
