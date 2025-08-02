@@ -13,8 +13,6 @@ export PKG_CONFIG_PATH="$ZOPEN_ROOTFS/usr/local/lib/pkgconfig"
 
 export ZOPEN_CATEGORIES="core utilities"
 
-export ZOPEN_RUNTIME_DEPS="bash"
-
 export ZOPEN_SYSTEM_PREREQ=""
 
 export ZOPEN_COMP="CLANG"
