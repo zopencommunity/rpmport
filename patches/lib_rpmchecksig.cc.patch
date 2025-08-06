@@ -1,0 +1,23 @@
+diff --git a/lib/rpmchecksig.cc b/lib/rpmchecksig.cc
+index 86cb5d1..28c219e 100644
+--- a/lib/rpmchecksig.cc
++++ b/lib/rpmchecksig.cc
+@@ -23,7 +23,7 @@
+ #include "rpmvs.hh"
+ 
+ #include "debug.h"
+-
++#include <iostream>
+ static int doImport(rpmts ts, const char *fn, char *buf, ssize_t blen)
+ {
+     char const * const pgpmark = "-----BEGIN PGP ";
+@@ -282,7 +282,8 @@ int rpmcliVerifySignatures(rpmts ts, ARGV_const_t argv)
+     while ((arg = *argv++) != NULL) {
+ 	FD_t fd = Fopen(arg, "r.ufdio");
+ 	if (fd == NULL || Ferror(fd)) {
+-	    rpmlog(RPMLOG_ERR, _("%s: open failed: %s\n"), 
++		std::cout<<"MANUALY added LOG :: in lib_rpmchecksig.cc"<<std::endl;
++	    rpmlog(RPMLOG_ERR, _("%s: open failed in lib_rpmchecksig.cc: %s\n"), 
+ 		     arg, Fstrerror(fd));
+ 	    res++;
+ 	} else if (rpmpkgVerifySigs(keyring, vfylevel, vsflags, fd, arg)) {

@@ -1,0 +1,9 @@
+diff --git a/misc/CMakeLists.txt b/misc/CMakeLists.txt
+index 925d2ea..20f6016 100644
+--- a/misc/CMakeLists.txt
++++ b/misc/CMakeLists.txt
+@@ -1,2 +1,4 @@
+ add_library(libmisc OBJECT fts.c rpmfts.h)
+ target_include_directories(libmisc PRIVATE ${Intl_INCLUDE_DIRS})
++
++

@@ -1,0 +1,47 @@
+diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
+index 819d77f..fd7043a 100644
+--- a/tools/CMakeLists.txt
++++ b/tools/CMakeLists.txt
+@@ -18,7 +18,15 @@ target_link_libraries(rpmlua PRIVATE LUA::LUA)
+ target_link_libraries(rpmbuild PRIVATE librpmbuild)
+ target_link_libraries(rpmspec PRIVATE librpmbuild)
+ target_link_libraries(rpmdeps PRIVATE librpmbuild)
+-target_link_libraries(rpmuncompress PRIVATE PkgConfig::LIBARCHIVE)
++find_package(ZLIB REQUIRED)
++find_package(OpenSSL REQUIRED)
++
++pkg_check_modules(LZ4 IMPORTED_TARGET liblz4)
++if(LZ4_FOUND)
++	message("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIFOUNDLZ4")
++endif()
++
++target_link_libraries(rpmuncompress PRIVATE PkgConfig::LZ4 PkgConfig::LIBARCHIVE ZLIB::ZLIB OpenSSL::Crypto)
+ 
+ if (HAVE_STRCHRNUL)
+ 	add_executable(rpmsort rpmsort.cc)
+@@ -27,7 +35,7 @@ endif()
+ 
+ if (LIBELF_FOUND)
+ 	add_executable(elfdeps elfdeps.cc)
+-	target_link_libraries(elfdeps PRIVATE PkgConfig::LIBELF)
++	target_link_libraries(elfdeps PRIVATE PkgConfig::LIBELF libmisc)
+ 	install(TARGETS elfdeps DESTINATION ${RPM_CONFIGDIR})
+ endif()
+ 
+@@ -40,7 +48,7 @@ if (READLINE_FOUND)
+ endif()
+ 
+ add_executable(rpm2archive rpm2archive.cc)
+-target_link_libraries(rpm2archive PRIVATE PkgConfig::LIBARCHIVE)
++target_link_libraries(rpm2archive PRIVATE PkgConfig::LZ4 PkgConfig::LIBARCHIVE libmisc ZLIB::ZLIB OpenSSL::Crypto) 
+ install(TARGETS rpm2archive)
+ 
+ # Everything links to these
+@@ -49,6 +57,7 @@ foreach(exe ${executables})
+ 	target_link_libraries(${exe} PRIVATE librpmio librpm PkgConfig::POPT)
+ 	target_link_libraries(${exe} PRIVATE ${Intl_LIBRARIES})
+ 	target_include_directories(${exe} PRIVATE ${Intl_INCLUDE_DIRS})
++	#	target_link_libraries(${exe} PRIVATE PkgConfig::LZ4)
+ endforeach()
+ 
+ foreach(cmd rpmverify rpmquery)

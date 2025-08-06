@@ -1,0 +1,44 @@
+diff --git a/include/rpm/progname_fallback.c b/include/rpm/progname_fallback.c
+new file mode 100755
+index 0000000..4aedf46
+--- /dev/null
++++ b/include/rpm/progname_fallback.c
+@@ -0,0 +1,38 @@
++//// misc/pprogname_fallback.c
++//#include <progname_fallback.h>
++//#include <string.h>
++//
++//static const char *progname = NULL;
++//
++//void setprogname(const char *name) {
++//    const char *slash = strrchr(name, '/');
++//    progname = slash ? slash + 1 : name;
++//}
++//
++//const char *getprogname(void) {
++//    return progname ? progname : "unknown";
++//}
++//
++//char* __tool_getprogname() {
++//  char argv[PATH_MAX];
++//  W_PSPROC buf;
++//  int token = 0;
++//  pid_t mypid = getpid();
++//
++//  memset(&buf, 0, sizeof(buf));
++//  buf.ps_pathlen = PATH_MAX;
++//  buf.ps_pathptr = &argv[0];
++//
++//  while ((token = w_getpsent(token, &buf, sizeof(buf))) > 0) {
++//    if (buf.ps_pid == mypid) {
++//        char* progname = strdup(basename(buf.ps_pathptr));
++//        if (!progname) {
++//          print_debug("__tool_getprogname: strdup failed");
++//          return NULL;
++//        }
++//      return progname;
++//    }
++//  }
++//    print_debug("__tool_getprogname: w_getpsent failed");
++//  return NULL;
++//}

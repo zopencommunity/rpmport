@@ -1,0 +1,58 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 769fcd3..9a08c6a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -196,15 +196,26 @@ set(REQFUNCS
+ 	mkstemp getcwd basename dirname realpath setenv unsetenv regcomp
+ 	utimes getline localtime_r statvfs getaddrinfo
+ 	openat mkdirat fstatat linkat symlinkat mkfifoat mknodat unlinkat
+-	renameat utimensat fchmodat fchownat stpcpy stpncpy
++	renameat utimensat fchmodat fchownat
+ )
+ 
+ find_package(PkgConfig REQUIRED)
+ find_package(Lua 5.2 REQUIRED)
+ find_package(ZLIB REQUIRED)
++
+ if (WITH_BZIP2)
+     find_package(BZip2 REQUIRED)
++    # Check if the target exists, if not create it
++endif()
++
++if(BZip2_FOUND AND NOT TARGET BZip2::BZip2)
++    add_library(BZip2::BZip2 UNKNOWN IMPORTED)
++    set_target_properties(BZip2::BZip2 PROPERTIES
++        IMPORTED_LOCATION "${BZIP2_LIBRARIES}"
++        INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
++    )
+ endif()
++
+ if (WITH_ICONV)
+     find_package(Iconv REQUIRED)
+ endif()
+@@ -241,6 +252,7 @@ find_library(MAGIC_LIBRARY NAMES magic REQUIRED)
+ find_path(MAGIC_INCLUDE_DIR NAMES magic.h REQUIRED)
+ mark_as_advanced(MAGIC_LIBRARY)
+ mark_as_advanced(MAGIC_INCLUDE_DIR)
++
+ set_target_properties(MAGIC::MAGIC PROPERTIES
+ 		      IMPORTED_LOCATION "${MAGIC_LIBRARY}")
+ target_include_directories(MAGIC::MAGIC INTERFACE "${MAGIC_INCLUDE_DIR}")
+@@ -391,7 +403,7 @@ if (LIBDW_FOUND)
+ 	set(HAVE_LIBDW 1)
+ 	check_library_exists(dw dwelf_elf_begin "" HAVE_DWELF_ELF_BEGIN)
+ endif()
+-
++set(HAVE_SETPROGNAME 1)
+ check_symbol_exists(GLOB_ONLYDIR "glob.h" HAVE_GLOB_ONLYDIR)
+ check_symbol_exists(major "sys/sysmacros.h" MAJOR_IN_SYSMACROS)
+ if (NOT MAJOR_IN_SYSMACROS)
+@@ -553,7 +565,7 @@ install(FILES
+ 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rpm
+ )
+ 
+-export(TARGETS librpm librpmio librpmbuild librpmsign
++export(TARGETS librpm rpmio librpmbuild librpmsign
+ 	FILE rpm-targets.cmake
+ 	NAMESPACE rpm::
+ )

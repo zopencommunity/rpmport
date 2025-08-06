@@ -1,0 +1,17 @@
+diff --git a/include/rpm/stpcpy_custom.h b/include/rpm/stpcpy_custom.h
+new file mode 100755
+index 0000000..2b4473e
+--- /dev/null
++++ b/include/rpm/stpcpy_custom.h
+@@ -0,0 +1,11 @@
++#include <stdio.h>
++#ifndef HAVE_STPCPY
++static char *stpcpy(char *dest, const char *src)
++{
++    while ((*dest = *src) != '\0') {
++        dest++;
++        src++;
++    }
++    return dest;
++}
++#endif

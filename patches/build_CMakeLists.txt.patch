@@ -1,0 +1,41 @@
+diff --git a/build/CMakeLists.txt b/build/CMakeLists.txt
+index 0f561ab..0a141d2 100644
+--- a/build/CMakeLists.txt
++++ b/build/CMakeLists.txt
+@@ -1,8 +1,9 @@
+-add_library(librpmbuild SHARED)
++add_library(librpmbuild STATIC ../lib/backend/ndb/rpmidx.c)
+ set_target_properties(librpmbuild PROPERTIES
+ 	VERSION ${RPM_LIBVERSION}
+ 	SOVERSION ${RPM_SOVERSION}
+ )
++
+ target_sources(librpmbuild PRIVATE
+ 	build.cc files.cc misc.cc pack.cc
+ 	parseSimpleScript.cc parseChangelog.cc parseDescription.cc
+@@ -25,11 +26,14 @@ target_include_directories(librpmbuild
+ )
+ 
+ target_link_libraries(librpmbuild PUBLIC librpmio librpm librpmsign)
++
++find_package(ZLIB REQUIRED)
+ target_link_libraries(librpmbuild PRIVATE
+-	libmisc
++	$<TARGET_OBJECTS:libmisc>
+ 	PkgConfig::POPT
+ 	LUA::LUA
+ 	MAGIC::MAGIC
++	ZLIB::ZLIB
+ 	${Intl_LIBRARIES}
+ )
+ 
+@@ -57,4 +61,8 @@ if (OpenMP_C_FOUND)
+ 	target_link_libraries(librpmbuild PRIVATE OpenMP::OpenMP_CXX)
+ endif()
+ 
+-install(TARGETS librpmbuild EXPORT rpm-targets)
++install(TARGETS librpmbuild EXPORT rpm-targets
++    ARCHIVE DESTINATION lib
++)
++
++

@@ -1,0 +1,57 @@
+diff --git a/rpmio/macro.cc b/rpmio/macro.cc
+index 21d1757..f4a46a7 100644
+--- a/rpmio/macro.cc
++++ b/rpmio/macro.cc
+@@ -1131,20 +1131,46 @@ static void doShescape(rpmMacroBuf mb, rpmMacroEntry me, ARGV_t argv, size_t *pa
+ 	rpmMacroBufAppend(mb, '\'');
+     }
+ }
++// 	PREVIOUSLY DEFINED BY RPM 
++//	static uint64_t getmem_total(void)
++//	{
++//	    uint64_t mem = 0;
++//	    long int pagesize = sysconf(_SC_PAGESIZE);
++//	    long int pages = sysconf(_SC_PHYS_PAGES);
++//
++//	    if (pagesize <= 0)
++//		pagesize = 4096;
++//	    if (pages > 0) {
++//		/* Cast needed to force 64bit calculation on 32bit systems */
++//		mem = (uint64_t)pages * pagesize;
++//	    }
++//
++//	    return mem;
++//	}
+ 
+ static uint64_t getmem_total(void)
+ {
+     uint64_t mem = 0;
+     long int pagesize = sysconf(_SC_PAGESIZE);
+-    long int pages = sysconf(_SC_PHYS_PAGES);
+ 
+     if (pagesize <= 0)
+-	pagesize = 4096;
+-    if (pages > 0) {
+-	/* Cast needed to force 64bit calculation on 32bit systems */
+-	mem = (uint64_t)pages * pagesize;
++        pagesize = 4096;
++
++   /* Fallback: try to read from /proc/meminfo on Linux-like systems-> __MVS__ which is zopen's indicates that the host operating system is z/OS */
++    FILE *fp = fopen("/proc/meminfo", "r");
++    if (fp) {
++        char line[256];
++        while (fgets(line, sizeof(line), fp)) {
++            if (strncmp(line, "MemTotal:", 9) == 0) {
++                unsigned long kb;
++                if (sscanf(line + 9, "%lu", &kb) == 1) {
++                    mem = (uint64_t)kb * 1024;
++                }
++                break;
++            }
++        }
++        fclose(fp);
+     }
+-
+     return mem;
+ }
+ 

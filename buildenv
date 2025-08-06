@@ -1,0 +1,50 @@
+export ZOPEN_BUILD_LINE="STABLE"
+
+export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm/releases/download/rpm-6.0.0-beta/rpm-5.99.91.tar.bz2"  # Specify the stable build URL (either git or tarball)
+export ZOPEN_STABLE_DEPS="coreutils zstd unzip git gawk patch grep sed file xz tar grep cpio libgpgerror zstd popt readline lua pkgconfig cmake zlib unzip libarchive scdoc libgcrypt openssl sqlite bzip2 gzip xz gettext make autoconf automake libtool perl m4 tar gpg doxygen lz4" # Specify the stable build dependencies.
+
+## Required IF ZOPEN_BUILD_LINE='DEV'
+export ZOPEN_DEV_URL="https://github.com/rpm-software-management/rpm.git"   # Specify the dev build URL
+
+export ZOPEN_EXTRA_CFLAGS="-D_POSIX_C_SOURCE=200809L" 
+export ZOPEN_EXTRA_CPPFLAGS="-D_POSIX_C_SOURCE=200809L -D__XPLAT=1"  
+export ZOPEN_SYSTEM_PREREQS="zos25"
+export PKG_CONFIG_PATH="$ZOPEN_ROOTFS/usr/local/lib/pkgconfig"
+
+export ZOPEN_CATEGORIES="core utilities"
+
+export ZOPEN_SYSTEM_PREREQ=""
+
+export ZOPEN_COMP="CLANG"
+export ZOPEN_BOOTSTRAP="skip"  ## Bootstrap program to run (defaults to './bootstrap')
+export ZOPEN_CONFIGURE="cmake" ## Configuration program to run (defaults to './configure')
+
+export ZOPEN_MAKE="zopen_build"
+
+
+zopen_build() {
+  LIBPATH="$LPEG_HOME/lib:$LIBPATH" make "$@" CMAKE_INSTALL_PREFIX="$ZOPEN_INSTALL_DIR" CMAKE_BUILD_TYPE=Release CMAKE_EXTRA_FLAGS="-DEXTRA_CFLAGS=\"-isystem${ZOSLIB_HOME}/include $CPPFLAGS\" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${CXX}  -DCMAKE_C_COMPILER="$CC" -DCMAKE_C_FLAGS=\"${CPPFLAGS} ${CFLAGS}\" -DCMAKE_C_FLAGS_RELEASE=\"${CPPFLAGS} ${CFLAGS}\" -DCOMPILE_FLAGS=\"${CPPFLAGS} ${CFLAGS}\" -DCMAKE_CXX_FLAGS=\"${CPPFLAGS} ${CFLAGS}\"  -DCMAKE_CXX_LINK_LIBRARY_FLAG=\"${LDFLAGS}\"  -DCMAKE_C_LINK_LIBRARY_FLAG=\"${LDFLAGS}\" -DCMAKE_CXX_STANDARD_LIBRARIES=\"${LIBS}\"  -DCMAKE_C_STANDARD_LIBRARIES=\"${LIBS}\" -DPREFER_LUA=ON -DENABLE_LIBINTL=OFF -DLIBUV_INCLUDE_DIR=\"$LIBUV_HOME/include\" -DGETTEXT_INCLUDE_DIR="$GETTEXT_HOME/include" -DGETTEXT_LIBRARIES="$GETTEXT_HOME/lib"  -DLIBUV_LIBRARY=\"$LIBUV_HOME/lib\" -DLPEG_LIBRARY="$LPEG_HOME/lib/lpeg.x"" BUNDLED_CMAKE_FLAG="-DUSE_BUNDLED=OFF -DLIBUV_LIBRARIES="$LIBUV_HOME/lib" -DLIBUV_LIBRARY="$LIBUV_HOME/lib/libuv.a" -DLIBUV_INCLUDE_DIR="$LIBUV_HOME/include" -DUSE_BUNDLED_LUA=ON -DUSE_BUNDLED_LUV=ON -DUSE_BUNDLED_LUAJIT=OFF -DUSE_BUNDLED_TS=ON -DUSE_BUNDLED_TS_PARSERS=ON -DUSE_BUNDLED_LIBVTERM=ON -DUSE_BUNDLED_LPEG=OFF -DUSE_BUNDLED_LIBUV=OFF -DUSE_BUNDLED_MSGPACK=ON -DUSE_BUNDLED_UNIBILIUM=ON -DUSE_BUNDLED_UTF8PROC=ON -DENABLE_LIBINTL=OFF -DUSE_BUNDLED_GETTEXT=OFF" DEPS_CMAKE_FLAGS="-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD_LIBRARIES=\"${LIBS}\" -DCMAKE_CXX_STANDARD_LIBRARIES=\"${LIBS}\" -DCMAKE_CXX_LINK_LIBRARY_FLAG=\"${LDFLAGS}\"  -DCMAKE_C_LINK_LIBRARY_FLAG=\"${LDFLAGS}\"  -DZSTD_LIBRARY=\$ZSTD_HOME/lib/libzstd.a -DZSTD_INCLUDE_DIR=\$ZSTD_HOME/include "
+}
+
+zopen_check_results()
+{
+  dir="$1"
+  pfx="$2"
+  chk="$1/$2_check.log"
+
+  # Echo the following information to gauge build health
+  echo "actualFailures:0"
+  echo "totalTests:1"
+  echo "expectedFailures:0"
+  echo "expectedTotalTests:1"
+}
+
+zopen_get_version()
+{
+  # Modify to echo the version of your tool/library
+  # Rather than hardcoding the version, obtain the version by running the tool/library
+  echo "1.0.0"
+}
+
+
+export ZOPEN_CONFIGURE_OPTS="--install-prefix \$ZOPEN_INSTALL_DIR/ -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DZLIB_LIBRARY=\"\$ZLIB_HOME/lib/libz.a\" -DLUA_DIR=\"\$LUA_HOME\" -DLUA_LIBRARIES=\"\$LUA_HOME/lib/liblua.a\" -DLUA_INCLUDE_DIR=\$LUA_HOME/include -DBZIP2_INCLUDE_DIR=\$BZIP2_HOME/include -DBZIP2_LIBRARIES=\$BZIP2_HOME/lib/libbz2.a -DLIBARCHIVE_DIR=\$LIBARCHIVE_HOME -DLIBARCHIVE_INCLUDE_DIR=\$LIBARCHIVE_HOME/include -DLIBARCHIVE_LIBRARY=\$LIBARCHIVE_HOME/lib/libarchive.a -DMAGIC_LIBRARY=\$FILE_HOME/lib/libmagic.a -DMAGIC_INCLUDE_DIR=\$FILE_HOME/include -DINTL_LIBRARY=\$GETTEXT_HOME/lib/libintl.a -DINTL_INCLUDE_DIR=\$GETTEXT_HOME/include/libintl.h -DWITH_READLINE=OFF  -DWITH_LIBELF=OFF -DWITH_LIBDW=OFF -DWITH_LIBLZMA=OFF -DENABLE_OPENMP=OFF -DWITH_CAP=OFF -DWITH_ACL=OFF -DWITH_AUDIT=OFF -DWITH_SELINUX=OFF -DWITH_SEQUOIA=OFF -DWITH_DBUS=OFF -DZSTD_INCLUDE_DIR=\"\${ZSTD_HOME}/include\" -DZSTD_LIBRARY=\"\${ZSTD_HOME}/lib\" -DHAVE_UNSHARE=OFF -DENABLE_PYTHON=OFF -DENABLE_NLS=OFF"

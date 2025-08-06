@@ -1,0 +1,13 @@
+diff --git a/rpmio/argv.cc b/rpmio/argv.cc
+index 7815a70..d329e10 100644
+--- a/rpmio/argv.cc
++++ b/rpmio/argv.cc
+@@ -8,8 +8,6 @@
+ #include <rpm/argv.h>
+ #include <rpm/rpmstring.h>
+ 
+-#include "debug.h"
+-
+ void argvPrint(const char * msg, ARGV_const_t argv, FILE * fp)
+ {
+     ARGV_const_t av;

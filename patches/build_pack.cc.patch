@@ -1,0 +1,23 @@
+diff --git a/build/pack.cc b/build/pack.cc
+index 93e3703..46846a2 100644
+--- a/build/pack.cc
++++ b/build/pack.cc
+@@ -25,7 +25,7 @@
+ #include "rpmmacro_internal.hh"
+ 
+ #include "debug.h"
+-
++#include<iostream>
+ static int rpmPackageFilesArchive(rpmfiles fi, int isSrc,
+ 				  FD_t cfd, ARGV_t dpaths,
+ 				  rpm_loff_t * archiveSize, char ** failedFile)
+@@ -94,7 +94,9 @@ static rpmRC cpio_doio(FD_t fdo, Package pkg, const char * fmodeMacro,
+     fdFiniDigest(cfd, RPMTAG_PAYLOADSHA3_256ALT, (void **)pld3, NULL, 1);
+ 
+     if (fsmrc) {
++	std::cout<<"build_pack.cc before"<<std::endl;
+ 	char *emsg = rpmfileStrerror(fsmrc);
++	std::cout<<"build_pack.cc after"<<std::endl;
+ 	if (failedFile)
+ 	    rpmlog(RPMLOG_ERR, _("create archive failed on file %s: %s\n"),
+ 		   failedFile, emsg);

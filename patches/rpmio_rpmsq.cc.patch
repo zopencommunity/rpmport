@@ -1,0 +1,13 @@
+diff --git a/rpmio/rpmsq.cc b/rpmio/rpmsq.cc
+index 67824b1..a3e06c7 100644
+--- a/rpmio/rpmsq.cc
++++ b/rpmio/rpmsq.cc
+@@ -5,7 +5,7 @@
+ #include "system.h"
+ 
+ #include <signal.h>
+-#include <sys/signal.h>
++// #include <sys/signal.h>
+ #include <errno.h>
+ #include <stdio.h>
+ #include <stdlib.h>

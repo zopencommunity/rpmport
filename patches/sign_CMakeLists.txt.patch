@@ -1,0 +1,10 @@
+diff --git a/sign/CMakeLists.txt b/sign/CMakeLists.txt
+index 5c63a62..8c5217d 100644
+--- a/sign/CMakeLists.txt
++++ b/sign/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-add_library(librpmsign SHARED)
++add_library(librpmsign STATIC)
+ set_target_properties(librpmsign PROPERTIES
+ 	VERSION ${RPM_LIBVERSION}
+ 	SOVERSION ${RPM_SOVERSION}

@@ -1,0 +1,13 @@
+diff --git a/lib/rpminstall.cc b/lib/rpminstall.cc
+index 9ca3eab..8fd9aa8 100644
+--- a/lib/rpminstall.cc
++++ b/lib/rpminstall.cc
+@@ -150,7 +150,7 @@ void * rpmShowProgress(const void * arg,
+ 	if (flags & INSTALL_HASH) {
+ 	    char *s = headerGetAsString(h, RPMTAG_NEVR);
+ 	    if (isatty (STDOUT_FILENO))
+-		fprintf(stdout, "%4d:%-33.33s", rpmcliProgressCurrent + 1, s);
++		fprintf(stdout, "dh %4d:%-33.33s", rpmcliProgressCurrent + 1, s);
+ 	    else
+ 		fprintf(stdout, "%-38.38s", s);
+ 	    (void) fflush(stdout);

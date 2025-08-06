@@ -1,0 +1,28 @@
+diff --git a/lib/transaction.cc b/lib/transaction.cc
+index 4e5da89..03c4323 100644
+--- a/lib/transaction.cc
++++ b/lib/transaction.cc
+@@ -48,6 +48,23 @@
+ 
+ #include "debug.h"
+ 
++/*
++#define _XPLATFORM_SOURCE
++#include <unistd.h>
++
++int syncfs(int fd);
++*/
++
++#ifdef __MVS__
++#include <unistd.h>
++
++// syncfs implementation for z/OS
++int syncfs(int fd) {
++    // On z/OS, syncfs might not exist, use fsync instead
++    return fsync(fd);
++}
++#endif
++
+ using std::string;
+ using std::vector;
+ 

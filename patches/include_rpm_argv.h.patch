@@ -1,0 +1,22 @@
+diff --git a/include/rpm/argv.h b/include/rpm/argv.h
+index 9be46d4..e79d54e 100644
+--- a/include/rpm/argv.h
++++ b/include/rpm/argv.h
+@@ -183,6 +183,17 @@ int argvSplit(ARGV_t * argvp, const char * str, const char * seps);
+  */
+ char *argvJoin(ARGV_const_t argv, const char *sep);
+ 
++#ifndef HAVE_STPCPY
++static char *stpcpy(char *dest, const char *src)
++{
++    while ((*dest = *src) != '\0') {
++        dest++;
++        src++;
++    }
++    return dest;
++}
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif

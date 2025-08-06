@@ -1,0 +1,28 @@
+diff --git a/rpmio/lposix.cc b/rpmio/lposix.cc
+index 3f66f70..0a4a423 100644
+--- a/rpmio/lposix.cc
++++ b/rpmio/lposix.cc
+@@ -567,9 +567,22 @@ static int Fgetpasswd(lua_State *L, int i, const void *data)
+ 		case 3: lua_pushstring(L, p->pw_dir); break;
+ 		case 4: lua_pushstring(L, p->pw_shell); break;
+ /* not strictly POSIX */
++		/*
+ 		case 5: lua_pushstring(L, p->pw_gecos); break;
+ 		case 6: lua_pushstring(L, p->pw_passwd); break;
+-	}
++		*/
++		/* not strictly POSIX */
++		#if !defined(__BIONIC__) && !defined(__MVS__) && defined(HAVE_PW_GECOS)
++			case 5: lua_pushstring(L, p->pw_gecos); break;
++		#else
++			case 5: lua_pushstring(L, ""); break;  /* Return empty string */
++		#endif
++		#if !defined(__BIONIC__) && !defined(__MVS__) && defined(HAVE_PW_PASSWD)
++			case 6: lua_pushstring(L, p->pw_passwd); break;
++		#else
++			case 6: lua_pushstring(L, "x"); break;  /* Return placeholder */
++		#endif
++      }
+ 	return 1;
+ }
+ 

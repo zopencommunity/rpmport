@@ -1,0 +1,33 @@
+diff --git a/misc/system.h b/misc/system.h
+index 36ea094..de9d613 100644
+--- a/misc/system.h
++++ b/misc/system.h
+@@ -77,7 +77,7 @@ extern int fdatasync(int fildes);
+ 
+    setprogname(*pn) must be the first call in main() in order to set the name
+    as soon as possible. */
+-#if defined(HAVE_SETPROGNAME) /* BSD'ish systems */
++ #if defined(HAVE_SETPROGNAME) || defined(_MVS_) /* BSD'ish systems */
+ # include <stdlib.h> /* Make sure this header is included */
+ # define xsetprogname(pn) setprogname(pn)
+ # define xgetprogname(pn) getprogname(pn)
+@@ -86,13 +86,17 @@ extern int fdatasync(int fildes);
+   extern const char *__progname;
+ # define xgetprogname(pn) __progname
+ #else
+-# error "Did not find any sutable implementation of xsetprogname/xgetprogname"
++/* # error put double quotes Did not find any sutable implementation of xsetprogname/xgetprogname */
++/*# include "progname_fallback.h"*/
++# define xsetprogname(pn) /*setprogname(pn)*/
++# define setprogname(pn)     ((void)0)        /* no-op */  
++# define xgetprogname(pn) getprogname()  
+ #endif
+ 
+ /* Take care of NLS matters.  */
+ #if defined(ENABLE_NLS)
+ # include <locale.h>
+-# include <libintl.h>
++
+ # define _(Text) dgettext (PACKAGE, Text)
+ #else
+ # define _(Text) Text
