@@ -35,7 +35,7 @@ zopen_get_version()
 {
   # Modify to echo the version of your tool/library
   # Rather than hardcoding the version, obtain the version by running the tool/library
-  echo "1.0.0"
+  ../build/tools/rpm --version | cut -d' ' -f3
 }
 
 
