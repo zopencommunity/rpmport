@@ -1,5 +1,5 @@
 diff --git a/misc/system.h b/misc/system.h
-index 36ea094..a68e6eb 100644
+index 36ea094..1f998b7 100644
 --- a/misc/system.h
 +++ b/misc/system.h
 @@ -77,7 +77,7 @@ extern int fdatasync(int fildes);
@@ -11,3 +11,19 @@ index 36ea094..a68e6eb 100644
  # include <stdlib.h> /* Make sure this header is included */
  # define xsetprogname(pn) setprogname(pn)
  # define xgetprogname(pn) getprogname(pn)
+@@ -100,4 +100,15 @@ extern int fdatasync(int fildes);
+ 
+ #define N_(Text) Text
+ 
++#if !defined(HAVE_STPCPY) && defined(__MVS__)
++inline char *stpcpy(char *dest, const char *src)
++{
++    while ((*dest = *src) != '\0') {
++        dest++;
++        src++;
++    }
++    return dest;
++}
++#endif
++
+ #endif	/* H_SYSTEM */
