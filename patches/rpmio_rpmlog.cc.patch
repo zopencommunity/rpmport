@@ -1,25 +1,41 @@
 diff --git a/rpmio/rpmlog.cc b/rpmio/rpmlog.cc
-index b3a2806..b676f54 100644
+index b3a2806..c2be1a5 100644
 --- a/rpmio/rpmlog.cc
 +++ b/rpmio/rpmlog.cc
-@@ -259,7 +259,9 @@ static int getColorConfig(void)
+@@ -18,6 +18,10 @@
+ #include <rpm/rpmstring.h>
+ #include "debug.h"
+ 
++#ifdef __MVS__
++#include <zos-tls.h>
++#endif
++
+ struct pair_hash {
+     template <class T1, class T2>
+     std::size_t operator () (const std::pair<T1,T2> &p) const {
+@@ -259,7 +263,12 @@ static int getColorConfig(void)
  
  static void logerror(void)
  {
--    static __thread int lasterr = 0;
-+    // static __thread int lasterr = 0;
-+    // assuming thread safety isn't critical
-+    static int lasterr = 0;
++#ifdef __MVS__
++    static __tlssim<int> lasterr_storage(0);
++    int& lasterr = *lasterr_storage.access();
++#else
+     static __thread int lasterr = 0;
++#endif
      if (errno != EPIPE && errno != lasterr) {
  	lasterr = errno;
  	perror(_("Error writing to log"));
-@@ -269,7 +271,8 @@ static void logerror(void)
+@@ -269,7 +278,12 @@ static void logerror(void)
  static int rpmlogDefault(FILE *stdlog, rpmlogRec rec)
  {
      FILE *msgout = (stdlog ? stdlog : stderr);
--    static __thread int color = -1;
-+    //static __thread int color = -1;
-+    static int color = -1;
++#ifdef __MVS__
++    static __tlssim<int> color_storage(0);
++    int& color = *color_storage.access();
++#else
+     static __thread int color = -1;
++#endif
      const char * colorOn = NULL;
  
      if (color < 0)

@@ -1,14 +1,28 @@
 diff --git a/lib/headerfmt.cc b/lib/headerfmt.cc
-index f6cb9fa..f2a25b5 100644
+index f6cb9fa..b8f6bbc 100644
 --- a/lib/headerfmt.cc
 +++ b/lib/headerfmt.cc
-@@ -214,7 +214,8 @@ RPM_GNUC_PRINTF(2, 3)
+@@ -15,6 +15,10 @@
+ 
+ #include "debug.h"
+ 
++#ifdef __MVS__
++#include <zos-tls.h>
++#endif
++
+ using std::string;
+ 
+ #define PARSER_BEGIN 	0
+@@ -214,7 +218,12 @@ RPM_GNUC_PRINTF(2, 3)
  static void hsaError(headerSprintfArgs hsa, const char *fmt, ...)
  {
      /* Use thread local buffer as headerFormat() errmsg arg is const */
--    static __thread char *errbuf = NULL;
-+    // static __thread char *errbuf = NULL;
-+    static char *errbuf = NULL;
++#ifdef __MVS__
++    static __tlssim<char *> errbuf_storage(NULL);
++    char * &errbuf = *errbuf_storage.access();
++#else
+     static __thread char *errbuf = NULL;
++#endif
  
      if (fmt == NULL) {
  	hsa->errmsg = NULL;
