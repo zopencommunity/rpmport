@@ -1,5 +1,5 @@
 diff --git a/lib/fsm.cc b/lib/fsm.cc
-index 63580c2..e1e8047 100644
+index 63580c2..96e032e 100644
 --- a/lib/fsm.cc
 +++ b/lib/fsm.cc
 @@ -4,6 +4,10 @@
@@ -13,15 +13,6 @@ index 63580c2..e1e8047 100644
  
  #include <inttypes.h>
  #include <utime.h>
-@@ -26,7 +30,7 @@
- #include "rpmug.hh"
- 
- #include "debug.h"
--
-+#include<iostream>
- #define	_FSM_DEBUG	0
- int _fsm_debug = _FSM_DEBUG;
- 
 @@ -41,6 +45,68 @@ static int strict_erasures = 0;
  #define _dirPerms 0755
  #define _filePerms 0644
@@ -91,23 +82,16 @@ index 63580c2..e1e8047 100644
  enum filestage_e {
      FILE_COMMIT = -1,
      FILE_NONE   = 0,
-@@ -167,10 +233,13 @@ static int fsmOpen(int *wfdp, int dirfd, const char *dest)
+@@ -167,7 +233,7 @@ static int fsmOpen(int *wfdp, int dirfd, const char *dest)
  {
      int rc = 0;
      /* Create the file with 0200 permissions (write by owner). */
 -    int fd = openat(dirfd, dest, O_WRONLY|O_EXCL|O_CREAT, 0200);
 +    int fd = openat(dirfd, dest, O_WRONLY|O_EXCL|O_CREAT,  to_native_mode(0200));
-+    std::cout<<"dirfd value"<<dirfd<<std::endl;
  
--    if (fd < 0)
-+    if (fd < 0) {
+     if (fd < 0)
  	rc = RPMERR_OPEN_FAILED;
-+	std::cout<<"rpmerror fd value"<<fd<<std::endl;
-+    }
- 
-     if (_fsm_debug) {
- 	rpmlog(RPMLOG_DEBUG, " %8s (%s [%d]) %s\n", __func__,
-@@ -290,10 +359,10 @@ static int fsmRmdir(int dirfd, const char *path)
+@@ -290,10 +356,10 @@ static int fsmRmdir(int dirfd, const char *path)
  
  static int fsmMkdir(int dirfd, const char *path, mode_t mode)
  {
@@ -120,23 +104,7 @@ index 63580c2..e1e8047 100644
  	       (rc < 0 ? strerror(errno) : ""));
      if (rc < 0)	rc = RPMERR_MKDIR_FAILED;
      return rc;
-@@ -302,7 +371,9 @@ static int fsmMkdir(int dirfd, const char *path, mode_t mode)
- static int fsmOpenat(int *wfdp, int dirfd, const char *path, int flags, int dir)
- {
-     struct stat lsb, sb;
-     int sflags = flags | O_NOFOLLOW;
-+    std::cout << "dh fsmOpenat dirfd --> 1 == "<< dirfd << std::endl;
-+    std::cout << "dh Path: " << path << std::endl;
-     int fd = openat(dirfd, path, sflags);
-     int rc = 0;
- 
-@@ -326,12 +397,13 @@ static int fsmOpenat(int *wfdp, int dirfd, const char *path, int flags, int dir)
- 	    if (ffd != fd) {
- 		close(ffd);
- 		rc = RPMERR_INVALID_SYMLINK;
-+    std::cout << "dh fsmOpenat rc --> 1 == "<< rc << std::endl;
- 	    }
- 	}
+@@ -331,7 +397,7 @@ static int fsmOpenat(int *wfdp, int dirfd, const char *path, int flags, int dir)
      }
  
      /* O_DIRECTORY equivalent */
@@ -145,7 +113,7 @@ index 63580c2..e1e8047 100644
  	rc = RPMERR_ENOTDIR;
  
      if (!rc && fd < 0)
-@@ -354,26 +426,28 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
+@@ -354,26 +420,26 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
  	op |= FAF_UNOWNED;
  
      /* Run fsm file pre hook for all plugins */
@@ -158,9 +126,7 @@ index 63580c2..e1e8047 100644
  
      if (!rc) {
 -	rc = fsmOpenat(fdp, dirfd, dn, O_RDONLY|O_NOFOLLOW, 1);
-+    std::cout << "dh fsmOpenat called --> 1 == "<< dirfd<< std::endl;
 +	rc = fsmOpenat(fdp, dirfd, dn, O_RDONLY, 1);
-+    std::cout << "dh fsmOpenat return rc --> 1 == "<< rc << std::endl;
      }
  
      if (!rc) {
@@ -180,47 +146,16 @@ index 63580c2..e1e8047 100644
      }
  
      return rc;
-@@ -390,7 +464,9 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
- 	return 0;
- 
-     int dirfd = -1;
-+    std::cout << "dh fsmOpenat dirfd called --> 1 == "<< dirfd<< std::endl;
-     int rc = fsmOpenat(&dirfd, -1, "/", oflags, 1);
-+    std::cout << "dh ensureDir rc --> 1 == "<< rc << std::endl;
-     int fd = dirfd; /* special case of "/" */
- 
-     char *path = xstrdup(p);
-@@ -398,12 +474,14 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
- 
-     while ((bn = strtok_r(dp, "/", &sp)) != NULL) {
- 	rc = fsmOpenat(&fd, dirfd, bn, oflags, 1);
-+    std::cout << "dh ensureDir rc --> 2 == "<< rc << std::endl;
- 	/* assemble absolute path for plugins benefit, sigh */
- 	apath = rstrscat(&apath, "/", bn, NULL);
+@@ -403,7 +469,7 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
  
  	if (rc && errno == ENOENT && create) {
  	    mode_t mode = S_IFDIR | (_dirPerms & 07777);
 -	    rc = fsmDoMkDir(plugins, dirfd, bn, apath, owned, mode, &fd);
 +	    rc = fsmDoMkDir(plugins, dirfd, bn, apath, owned, to_native_mode(mode), &fd);
-+    std::cout << "dh ensureDir rc --> 3 == "<< rc << std::endl;
  	}
  
  	fsmClose(&dirfd);
-@@ -415,9 +493,12 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
-     }
- 
-     if (rc) {
-+    std::cout << "dh ensureDir rc --> 4 == "<< rc << std::endl;
- 	if (!quiet) {
-+	    std::cout<<"lib_fsm.cc before"<<std::endl;
- 	    char *msg = rpmfileStrerror(rc);
--	    rpmlog(RPMLOG_ERR, _("failed to open dir %s of %s: %s\n"),
-+	    std::cout<<"lib_fsm.cc after"<<std::endl;
-+	    rpmlog(RPMLOG_ERR, _(" dh failed to open dir %s of %s: %s\n"),
- 		    bn, p, msg);
- 	    free(msg);
- 	}
-@@ -438,11 +519,11 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
+@@ -438,11 +504,11 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
  
  static int fsmMkfifo(int dirfd, const char *path, mode_t mode)
  {
@@ -234,7 +169,7 @@ index 63580c2..e1e8047 100644
  	       (rc < 0 ? strerror(errno) : ""));
      }
  
-@@ -455,11 +536,11 @@ static int fsmMkfifo(int dirfd, const char *path, mode_t mode)
+@@ -455,11 +521,11 @@ static int fsmMkfifo(int dirfd, const char *path, mode_t mode)
  static int fsmMknod(int dirfd, const char *path, mode_t mode, dev_t dev)
  {
      /* FIX: check S_IFIFO or dev != 0 */
@@ -248,7 +183,7 @@ index 63580c2..e1e8047 100644
  	       (unsigned)dev, (rc < 0 ? strerror(errno) : ""));
      }
  
-@@ -473,15 +554,15 @@ static void removeSBITS(int dirfd, const char *path)
+@@ -473,15 +539,15 @@ static void removeSBITS(int dirfd, const char *path)
  {
      struct stat stb;
      int flags = AT_SYMLINK_NOFOLLOW;
@@ -268,7 +203,7 @@ index 63580c2..e1e8047 100644
  	    rc += cap_set_fileat(dirfd, path, NULL);
  	}
  #endif
-@@ -492,7 +573,7 @@ static void fsmDebug(const char *dn, const char *fpath, rpmFileAction action,
+@@ -492,7 +558,7 @@ static void fsmDebug(const char *dn, const char *fpath, rpmFileAction action,
  		     const struct stat *st)
  {
      rpmlog(RPMLOG_DEBUG, "%-10s %06o%3d (%4d,%4d)%6d %s%s\n",
@@ -277,7 +212,7 @@ index 63580c2..e1e8047 100644
  	   (int)st->st_nlink, (int)st->st_uid,
  	   (int)st->st_gid, (int)st->st_size,
  	    (dn ? dn : ""), (fpath ? fpath : ""));
-@@ -550,7 +631,7 @@ static int fsmRename(int odirfd, const char *opath, int dirfd, const char *path)
+@@ -550,7 +616,7 @@ static int fsmRename(int odirfd, const char *opath, int dirfd, const char *path)
  
  static int fsmRemove(int dirfd, const char *path, mode_t mode)
  {
@@ -286,7 +221,7 @@ index 63580c2..e1e8047 100644
  }
  
  static int fsmChown(int fd, int dirfd, const char *path, mode_t mode, uid_t uid, gid_t gid)
-@@ -590,41 +671,42 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
+@@ -590,31 +656,32 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
      mode_t fmode = (mode & 07777);
      int rc;
      if (fd >= 0) {
@@ -320,33 +255,15 @@ index 63580c2..e1e8047 100644
      return rc;
  }
  
-+/*
++#if 0
  static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mtime)
  {
      int rc = 0;
--    struct timespec stamps[2] = {
-+    struct timeval stamps[2] = {
- 	{ .tv_sec = mtime, .tv_nsec = 0 },
- 	{ .tv_sec = mtime, .tv_nsec = 0 },
-     };
- 
-     if (fd >= 0)
--	rc = futimens(fd, stamps);
-+	rc = futimes(fd, stamps);
-     else
- 	rc = utimensat(dirfd, path, stamps, AT_SYMLINK_NOFOLLOW);
-     
-@@ -632,11 +714,42 @@ static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mti
- 	rpmlog(RPMLOG_DEBUG, " %8s (%d - %d %s, 0x%x) %s\n", __func__,
- 	       fd, dirfd, path, (unsigned)mtime, (rc < 0 ? strerror(errno) : ""));
-     if (rc < 0)	rc = RPMERR_UTIME_FAILED;
--    /* ...but utime error is not critical for directories */
-+    // ...but utime error is not critical for directories 
-     if (rc && S_ISDIR(mode))
+@@ -637,6 +704,37 @@ static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mti
  	rc = 0;
      return rc;
  }
-+*/ 
++#endif 
 +
 +static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mtime)
 +{
@@ -380,7 +297,7 @@ index 63580c2..e1e8047 100644
  
  static int fsmVerify(int dirfd, const char *path, rpmfi fi)
  {
-@@ -649,7 +762,7 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
+@@ -649,7 +747,7 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
      if (rc)
  	return rc;
  
@@ -389,7 +306,7 @@ index 63580c2..e1e8047 100644
  	/* HP-UX (and other os'es) don't permit unlink on busy files. */
  	char *rmpath = rstrscat(NULL, path, "-RPMDELETE", NULL);
  	rc = fsmRename(dirfd, path, dirfd, rmpath);
-@@ -660,20 +773,20 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
+@@ -660,20 +758,20 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
  	    rc = RPMERR_UNLINK_FAILED;
  	free(rmpath);
          return (rc ? rc : RPMERR_ENOENT);	/* XXX HACK */
@@ -416,7 +333,7 @@ index 63580c2..e1e8047 100644
              char buf[8 * BUFSIZ];
              size_t len;
              rc = fsmReadLink(path, buf, 8 * BUFSIZ, &len);
-@@ -681,13 +794,13 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
+@@ -681,13 +779,13 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
              if (rc) return rc;
              if (rstreq(rpmfiFLink(fi), buf)) return 0;
          }
@@ -436,7 +353,7 @@ index 63580c2..e1e8047 100644
      }
      /* XXX shouldn't do this with commit/undo. */
      rc = fsmUnlink(dirfd, path);
-@@ -745,22 +858,22 @@ static int fsmSetmeta(int fd, int dirfd, const char *path,
+@@ -745,22 +843,22 @@ static int fsmSetmeta(int fd, int dirfd, const char *path,
      char *dest = xstrdup(rpmfiFN(fi));
  
      if (!rc && !getuid()) {
@@ -465,7 +382,7 @@ index 63580c2..e1e8047 100644
      }
      free(dest);
  
-@@ -961,7 +1074,7 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
+@@ -961,7 +1059,7 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
  	    /* Run fsm file pre hook for all plugins */
  	    if (!rc)
  		rc = rpmpluginsCallFsmFilePre(plugins, fi, fp->fpath,
@@ -474,7 +391,7 @@ index 63580c2..e1e8047 100644
  	    if (rc)
  		goto setmeta; /* for error notification */
  
-@@ -989,51 +1102,53 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
+@@ -989,51 +1087,52 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
  	    if (fp->action == FA_TOUCH)
  		goto setmeta;
  
@@ -521,7 +438,6 @@ index 63580c2..e1e8047 100644
 -                if (!IS_DEV_LOG(fp->fpath))
 +                if (!IS_DEV_LOG(fp->fpath)) {
                      rc = RPMERR_UNKNOWN_FILETYPE;
-+		    std::cout<<"brr rpmerr_unknown_filetyype in libfsm.cc rpmPackageFilesInstallfn"<<std::endl;
 +		}
              }
  
@@ -540,7 +456,7 @@ index 63580c2..e1e8047 100644
  	    }
  
  	    if (!rc && fp->setmeta) {
-@@ -1081,7 +1196,7 @@ setmeta:
+@@ -1081,7 +1180,7 @@ setmeta:
  
  	    /* Run fsm file post hook for all plugins for all processed files */
  	    rpmpluginsCallFsmFilePost(plugins, fi, fp->fpath,
@@ -549,7 +465,7 @@ index 63580c2..e1e8047 100644
  	}
      }
      fi = fsmIterFini(fi, &di);
-@@ -1097,7 +1212,7 @@ setmeta:
+@@ -1097,7 +1196,7 @@ setmeta:
  		continue;
  
  	    if (fp->stage > FILE_NONE && !fp->skip && fp->action != FA_TOUCH) {
@@ -558,7 +474,7 @@ index 63580c2..e1e8047 100644
  	    }
  	}
      }
-@@ -1147,7 +1262,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
+@@ -1147,7 +1246,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
  
  	/* Run fsm file pre hook for all plugins */
  	rc = rpmpluginsCallFsmFilePre(plugins, fi, fp->fpath,
@@ -567,7 +483,7 @@ index 63580c2..e1e8047 100644
  
  	rc = fsmBackup(di.dirfd, fi, fp->action);
  
-@@ -1155,7 +1270,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
+@@ -1155,7 +1254,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
          if (fp->action == FA_ERASE) {
  	    int missingok = (rpmfiFFlags(fi) & (RPMFILE_MISSINGOK | RPMFILE_GHOST));
  
@@ -576,7 +492,7 @@ index 63580c2..e1e8047 100644
  
  	    /*
  	     * Missing %ghost or %missingok entries are not errors.
-@@ -1180,14 +1295,14 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
+@@ -1180,14 +1279,14 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
  	    if (rc) {
  		int lvl = strict_erasures ? RPMLOG_ERR : RPMLOG_WARNING;
  		rpmlog(lvl, _("%s %s%s: remove failed: %s\n"),
