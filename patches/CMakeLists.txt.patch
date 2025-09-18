@@ -1,7 +1,18 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 769fcd3..9a08c6a 100644
+index af9c5da..2abf791 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
+@@ -157,8 +157,8 @@ function(makemacros)
+ 
+ 	list(GET db_backends 0 DB_BACKEND)
+ 
+-	set(host_cpu ${CMAKE_HOST_SYSTEM_PROCESSOR})
+-	string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} host_os)
++	set(host_cpu "s390x")
++	string(TOLOWER "zos" host_os)
+ 	set(host_vendor ${RPM_VENDOR})
+ 	set(host ${host_cpu}-${host_vendor}-${host_os})
+ 
 @@ -196,15 +196,26 @@ set(REQFUNCS
  	mkstemp getcwd basename dirname realpath setenv unsetenv regcomp
  	utimes getline localtime_r statvfs getaddrinfo

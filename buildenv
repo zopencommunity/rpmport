@@ -18,7 +18,7 @@ export ZOPEN_COMP="CLANG"
 export ZOPEN_BOOTSTRAP="skip"  ## Bootstrap program to run (defaults to './bootstrap')
 export ZOPEN_CONFIGURE="cmake" ## Configuration program to run (defaults to './configure')
 
-export ZOPEN_RUNTIME_DEPS="file"
+export ZOPEN_RUNTIME_DEPS="file sed coreutils findutils grep bash"
 
 zopen_check_results()
 {

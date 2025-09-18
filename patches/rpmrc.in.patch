@@ -1,30 +1,12 @@
 diff --git a/rpmrc.in b/rpmrc.in
-index 8646a96..3fc3573 100644
+index 8646a96..7e0cf4b 100644
 --- a/rpmrc.in
 +++ b/rpmrc.in
-@@ -388,6 +388,7 @@ buildarchtranslate: hades: m68kmint
+@@ -305,6 +305,7 @@ os_canon:    Linux/ESA: VM/ESA	20
  
- buildarchtranslate: s390: s390
- buildarchtranslate: s390x: s390x
-+buildarchtranslate: 8561: 8561
+ os_canon:       Darwin: darwin	21
+ os_canon:       MacOSX: macosx	21
++os_canon:         z/OS: zos     22
  
- buildarchtranslate: ia64: ia64
- 
-@@ -503,7 +504,8 @@ arch_compat: hades: m68kmint noarch
- 
- arch_compat: i370: noarch
- arch_compat: s390: noarch
--arch_compat: s390x: s390 noarch
-+arch_compat: s390x: s390 8561 noarch
-+arch_compat: 8561: noarch
- 
- arch_compat: ia64: noarch
- 
-@@ -647,6 +649,7 @@ buildarch_compat: hades: m68kmint noarch
- 
- buildarch_compat: s390: noarch
- buildarch_compat: s390x: noarch
-+buildarch_compat: 8561: noarch
- 
- buildarch_compat: ia64: noarch
- 
+ #############################################################
+ # For a given uname().machine, the default build arch

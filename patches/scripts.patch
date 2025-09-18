@@ -1,0 +1,22 @@
+diff --git a/scripts/brp-remove-la-files b/scripts/brp-remove-la-files
+index 0e6e58f..a45f292 100755
+--- a/scripts/brp-remove-la-files
++++ b/scripts/brp-remove-la-files
+@@ -11,6 +11,6 @@ do
+ 
+   find "$RPM_BUILD_ROOT" -type $FILETYPE -name '*.la' 2>/dev/null -print0 |
+     xargs -0 grep --fixed-strings '.la - a libtool library file' --files-with-matches --null |
+-    xargs -0 rm --force
++    xargs -0 rm -f
+ 
+ done
+diff --git a/scripts/brp-strip b/scripts/brp-strip
+index 76b360b..bc4fd7e 100755
+--- a/scripts/brp-strip
++++ b/scripts/brp-strip
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/env bash
+ 
+ # If using normal root, avoid changing anything.
+ if [ -z "$RPM_BUILD_ROOT" ] || [ "$RPM_BUILD_ROOT" = "/" ]; then
