@@ -1,0 +1,12 @@
+diff --git a/rpmrc.in b/rpmrc.in
+index 8646a96..7e0cf4b 100644
+--- a/rpmrc.in
++++ b/rpmrc.in
+@@ -305,6 +305,7 @@ os_canon:    Linux/ESA: VM/ESA	20
+ 
+ os_canon:       Darwin: darwin	21
+ os_canon:       MacOSX: macosx	21
++os_canon:         z/OS: zos     22
+ 
+ #############################################################
+ # For a given uname().machine, the default build arch

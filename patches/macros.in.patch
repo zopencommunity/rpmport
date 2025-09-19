@@ -1,7 +1,16 @@
 diff --git a/macros.in b/macros.in
-index e3741f9..de8bf36 100644
+index 47caca5..5a9a7bf 100644
 --- a/macros.in
 +++ b/macros.in
+@@ -636,7 +636,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+ #	binary packages, as described by rpm-queryformat(7). Percent signs need
+ #	to be escaped.
+ #
+-%_build_name_fmt	%%{ARCH}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
++%_build_name_fmt	%{_target_platform}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%{_target_platform}.rpm
+ 
+ #	Verify digest/signature flags for various rpm modes:
+ #	0x30300 (RPMVSF_MASK_NODIGESTS)    --nohdrchk      if set, don't check digest(s)
 @@ -1339,55 +1339,4 @@ end
  # arguments, eg `%add_sysuser g mygroup 515`.
  # -b option omits the "Provides: " and the "Requires:" lines for group

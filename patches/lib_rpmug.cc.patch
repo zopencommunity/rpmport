@@ -1,14 +1,28 @@
 diff --git a/lib/rpmug.cc b/lib/rpmug.cc
-index 6093cd6..02867fc 100644
+index 6093cd6..4034f77 100644
 --- a/lib/rpmug.cc
 +++ b/lib/rpmug.cc
-@@ -25,7 +25,8 @@ struct rpmug_s {
+@@ -13,6 +13,10 @@
+ #include "rpmug.hh"
+ #include "debug.h"
+ 
++#ifdef __MVS__
++#include <zos-tls.h>
++#endif
++
+ using std::unordered_map;
+ using std::string;
+ 
+@@ -25,7 +29,12 @@ struct rpmug_s {
      unordered_map<string,gid_t> gnameMap;
  };
  
--static __thread struct rpmug_s *rpmug = NULL;
-+// static __thread struct rpmug_s *rpmug = NULL;
-+static struct rpmug_s *rpmug = NULL;
++#ifdef __MVS__
++static __tlssim<struct rpmug_s *> rpmug_storage(NULL);
++struct rpmug_s* &rpmug = *rpmug_storage.access();
++#else
+ static __thread struct rpmug_s *rpmug = NULL;
++#endif
  
  static const char *getpath(const char *bn, const char *dfl, char **dest)
  {
