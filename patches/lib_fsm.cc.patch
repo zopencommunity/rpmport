@@ -1,5 +1,5 @@
 diff --git a/lib/fsm.cc b/lib/fsm.cc
-index 63580c2..96e032e 100644
+index 63580c2..805c9f3 100644
 --- a/lib/fsm.cc
 +++ b/lib/fsm.cc
 @@ -4,6 +4,10 @@
@@ -13,116 +13,48 @@ index 63580c2..96e032e 100644
  
  #include <inttypes.h>
  #include <utime.h>
-@@ -41,6 +45,68 @@ static int strict_erasures = 0;
- #define _dirPerms 0755
- #define _filePerms 0644
- 
-+#ifdef __MVS__
-+#  define LINUX_S_IFIFO	      0010000	/* [XSI] named pipe (fifo) */
-+#  define LINUX_S_IFCHR	      0020000	/* [XSI] character special */
-+#  define LINUX_S_IFDIR	      0040000	/* [XSI] directory */
-+#  define LINUX_S_IFBLK	      0060000   /* [XSI] block special */
-+#  define LINUX_S_IFREG	      0100000   /* [XSI] regular */
-+#  define LINUX_S_IFLNK	      0120000   /* [XSI] symbolic link */
-+#  define LINUX_S_IFSOCK      0140000   /* [XSI] socket */
-+
-+#  define ZOS_S_IFIFO       0x04000000	/* named pipe (fifo) */
-+#  define ZOS_S_IFCHR       0x02000000	/* character special */
-+#  define ZOS_S_IFDIR       0x01000000	/* directory */
-+#  define ZOS_S_IFBLK       0x06000000	/* block special */
-+#  define ZOS_S_IFREG       0x03000000	/* regular */
-+#  define ZOS_S_IFLNK       0x05000000	/* symbolic link */
-+#  define ZOS_S_IFSOCK      0x07000000  /* socket */
-+
-+#  define ZOS_S_IFMT        0xFF000000  /* mask */
-+
-+/*
-+ * z/OS has a 'mode_t' that is 32 bits in size, whereas
-+ * Linux has a 'mode_t' that is 16 bits in size.
-+ * The bottom 3 nibbles are the same, but z/OS uses
-+ * the top word for the st_mode parts of mode and
-+ * Linux uses the top nibble
-+ */
-+static inline mode_t
-+to_linux_mode(unsigned int inmode)
-+{
-+  mode_t outmode = (mode_t) (inmode & 0777);
-+
-+  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFIFO) { outmode |= LINUX_S_IFIFO; }
-+  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFCHR) { outmode |= LINUX_S_IFCHR; }
-+  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFDIR) { outmode |= LINUX_S_IFDIR; }
-+  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFBLK) { outmode |= LINUX_S_IFBLK; }
-+  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFREG) { outmode |= LINUX_S_IFREG; }
-+  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFLNK) { outmode |= LINUX_S_IFLNK; }
-+  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFSOCK) { outmode |= LINUX_S_IFSOCK; }
-+  return outmode;
-+}
-+
-+static inline unsigned int
-+to_zos_mode(mode_t inmode)
-+{
-+  unsigned int outmode = (unsigned int) (inmode & 0777);
-+
-+  if (inmode & LINUX_S_IFIFO) { outmode |= ZOS_S_IFIFO; }
-+  if (inmode & LINUX_S_IFCHR) { outmode |= ZOS_S_IFCHR; }
-+  if (inmode & LINUX_S_IFDIR) { outmode |= ZOS_S_IFDIR; }
-+  if (inmode & LINUX_S_IFBLK) { outmode |= ZOS_S_IFBLK; }
-+  if (inmode & LINUX_S_IFREG) { outmode |= ZOS_S_IFREG; }
-+  if (inmode & LINUX_S_IFLNK) { outmode |= ZOS_S_IFLNK; }
-+  if (inmode & LINUX_S_IFSOCK) { outmode |= ZOS_S_IFSOCK; }
-+
-+  return outmode;
-+}
-+
-+#define to_native_mode(inmode) (to_zos_mode(inmode))
-+#else
-+#define to_native_mode(inmode) (inmode)
-+#endif
-+
- enum filestage_e {
-     FILE_COMMIT = -1,
-     FILE_NONE   = 0,
-@@ -167,7 +233,7 @@ static int fsmOpen(int *wfdp, int dirfd, const char *dest)
+@@ -167,7 +171,7 @@ static int fsmOpen(int *wfdp, int dirfd, const char *dest)
  {
      int rc = 0;
      /* Create the file with 0200 permissions (write by owner). */
 -    int fd = openat(dirfd, dest, O_WRONLY|O_EXCL|O_CREAT, 0200);
-+    int fd = openat(dirfd, dest, O_WRONLY|O_EXCL|O_CREAT,  to_native_mode(0200));
++    int fd = openat(dirfd, dest, O_WRONLY|O_EXCL|O_CREAT,  (0200));
  
      if (fd < 0)
  	rc = RPMERR_OPEN_FAILED;
-@@ -290,10 +356,10 @@ static int fsmRmdir(int dirfd, const char *path)
- 
- static int fsmMkdir(int dirfd, const char *path, mode_t mode)
- {
--    int rc = mkdirat(dirfd, path, (mode & 07777));
-+    int rc = mkdirat(dirfd, path, to_native_mode(mode & 07777));
+@@ -293,7 +297,7 @@ static int fsmMkdir(int dirfd, const char *path, mode_t mode)
+     int rc = mkdirat(dirfd, path, (mode & 07777));
      if (_fsm_debug)
  	rpmlog(RPMLOG_DEBUG, " %8s (%d %s, 0%04o) %s\n", __func__,
 -	       dirfd, path, (unsigned)(mode & 07777),
-+	       dirfd, path, to_native_mode((unsigned)(mode & 07777)),
++	       dirfd, path, ((unsigned)(mode & 07777)),
  	       (rc < 0 ? strerror(errno) : ""));
      if (rc < 0)	rc = RPMERR_MKDIR_FAILED;
      return rc;
-@@ -331,7 +397,7 @@ static int fsmOpenat(int *wfdp, int dirfd, const char *path, int flags, int dir)
-     }
+@@ -302,8 +306,19 @@ static int fsmMkdir(int dirfd, const char *path, mode_t mode)
+ static int fsmOpenat(int *wfdp, int dirfd, const char *path, int flags, int dir)
+ {
+     struct stat lsb, sb;
+-    int sflags = flags | O_NOFOLLOW;
+-    int fd = openat(dirfd, path, sflags);
++    int fd, sflags = flags | O_NOFOLLOW;
++#ifdef __MVS__
++    if (path && path[0] == '/' && path[1] == '\0') {
++       fd = openat(dirfd, path, flags);    // O_RDONLY only, no O_NOFOLLOW
++    }
++    else
++    {
++       fd = openat(dirfd, path, sflags);
++    }
++#else
++    fd = openat(dirfd, path, sflags);
++#endif
++    
+     int rc = 0;
  
-     /* O_DIRECTORY equivalent */
--    if (!rc && dir && fd >= 0 && fstat(fd, &sb) == 0 && !S_ISDIR(sb.st_mode))
-+    if (!rc && dir && fd >= 0 && fstat(fd, &sb) == 0 && !S_ISDIR(to_native_mode(sb.st_mode)))
- 	rc = RPMERR_ENOTDIR;
- 
-     if (!rc && fd < 0)
-@@ -354,26 +420,26 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
- 	op |= FAF_UNOWNED;
- 
-     /* Run fsm file pre hook for all plugins */
--    rc = rpmpluginsCallFsmFilePre(plugins, NULL, apath, mode, op);
-+    rc = rpmpluginsCallFsmFilePre(plugins, NULL, apath, to_native_mode(mode), op);
- 
-     if (!rc)
--	rc = fsmMkdir(dirfd, dn, mode);
-+	rc = fsmMkdir(dirfd, dn, to_native_mode(mode));
+     /*
+@@ -360,11 +375,11 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
+ 	rc = fsmMkdir(dirfd, dn, mode);
  
      if (!rc) {
 -	rc = fsmOpenat(fdp, dirfd, dn, O_RDONLY|O_NOFOLLOW, 1);
@@ -131,127 +63,78 @@ index 63580c2..96e032e 100644
  
      if (!rc) {
 -	rc = rpmpluginsCallFsmFilePrepare(plugins, NULL, *fdp, apath, apath, mode, op);
-+	rc = rpmpluginsCallFsmFilePrepare(plugins, NULL, *fdp, apath, apath,to_native_mode(mode), op);
++	rc = rpmpluginsCallFsmFilePrepare(plugins, NULL, *fdp, apath, apath,mode, op);
      }
  
      /* Run fsm file post hook for all plugins */
--    rpmpluginsCallFsmFilePost(plugins, NULL, apath, mode, op, rc);
-+    rpmpluginsCallFsmFilePost(plugins, NULL, apath, to_native_mode(mode), op, rc);
- 
+@@ -373,7 +388,7 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
      if (!rc) {
  	rpmlog(RPMLOG_DEBUG,
  		"%s directory created with perms %04o\n",
 -		apath, (unsigned)(mode & 07777));
-+		apath,to_native_mode((unsigned)(mode & 07777)));
++		apath,((unsigned)(mode & 07777)));
      }
  
      return rc;
-@@ -403,7 +469,7 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
- 
- 	if (rc && errno == ENOENT && create) {
- 	    mode_t mode = S_IFDIR | (_dirPerms & 07777);
--	    rc = fsmDoMkDir(plugins, dirfd, bn, apath, owned, mode, &fd);
-+	    rc = fsmDoMkDir(plugins, dirfd, bn, apath, owned, to_native_mode(mode), &fd);
- 	}
- 
- 	fsmClose(&dirfd);
-@@ -438,11 +504,11 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
- 
- static int fsmMkfifo(int dirfd, const char *path, mode_t mode)
- {
--    int rc = mkfifoat(dirfd, path, (mode & 07777));
-+    int rc = mkfifoat(dirfd, path,to_native_mode(mode & 07777));
+@@ -442,7 +457,7 @@ static int fsmMkfifo(int dirfd, const char *path, mode_t mode)
  
      if (_fsm_debug) {
  	rpmlog(RPMLOG_DEBUG, " %8s (%d %s, 0%04o) %s\n",
 -	       __func__, dirfd, path, (unsigned)(mode & 07777),
-+	       __func__, dirfd, path,to_native_mode((unsigned)(mode & 07777)),
++	       __func__, dirfd, path, ((unsigned)(mode & 07777)),
  	       (rc < 0 ? strerror(errno) : ""));
      }
  
-@@ -455,11 +521,11 @@ static int fsmMkfifo(int dirfd, const char *path, mode_t mode)
- static int fsmMknod(int dirfd, const char *path, mode_t mode, dev_t dev)
- {
-     /* FIX: check S_IFIFO or dev != 0 */
--    int rc = mknodat(dirfd, path, (mode & ~07777), dev);
-+    int rc = mknodat(dirfd, path, to_native_mode(mode & ~07777), dev);
+@@ -459,7 +474,7 @@ static int fsmMknod(int dirfd, const char *path, mode_t mode, dev_t dev)
  
      if (_fsm_debug) {
  	rpmlog(RPMLOG_DEBUG, " %8s (%d %s, 0%o, 0x%x) %s\n",
 -	       __func__, dirfd, path, (unsigned)(mode & ~07777),
-+	       __func__, dirfd, path,to_native_mode((unsigned)(mode & ~07777)),
++	       __func__, dirfd, path, ((unsigned)(mode & ~07777)),
  	       (unsigned)dev, (rc < 0 ? strerror(errno) : ""));
      }
  
-@@ -473,15 +539,15 @@ static void removeSBITS(int dirfd, const char *path)
- {
-     struct stat stb;
-     int flags = AT_SYMLINK_NOFOLLOW;
--    if (fstatat(dirfd, path, &stb, flags) == 0 && S_ISREG(stb.st_mode)) {
-+    if (fstatat(dirfd, path, &stb, flags) == 0 && S_ISREG(to_native_mode(stb.st_mode))) {
- 	/* XXX TODO: actually check for the rc, but what to do there? */
+@@ -478,10 +493,10 @@ static void removeSBITS(int dirfd, const char *path)
  	int rc = 0;
  	/* We now know it's not a link so no need to worry about following */
--	if ((stb.st_mode & 06000) != 0) {
+ 	if ((stb.st_mode & 06000) != 0) {
 -	    rc += fchmodat(dirfd, path, stb.st_mode & 0777, 0);
-+	if ((to_native_mode(stb.st_mode) & 06000) != 0) {
-+	    rc += fchmodat(dirfd, path, to_native_mode(stb.st_mode & 0777), 0);
++	    rc += fchmodat(dirfd, path, (stb.st_mode & 0777), 0);
  	}
  #ifdef WITH_CAP
 -	if (stb.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) {
-+	if (to_native_mode(stb.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))) {
++	if ((stb.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))) {
  	    rc += cap_set_fileat(dirfd, path, NULL);
  	}
  #endif
-@@ -492,7 +558,7 @@ static void fsmDebug(const char *dn, const char *fpath, rpmFileAction action,
+@@ -492,7 +507,7 @@ static void fsmDebug(const char *dn, const char *fpath, rpmFileAction action,
  		     const struct stat *st)
  {
      rpmlog(RPMLOG_DEBUG, "%-10s %06o%3d (%4d,%4d)%6d %s%s\n",
 -	   fileActionString(action), (int)st->st_mode,
-+	   fileActionString(action),(int)to_native_mode(st->st_mode),
++	   fileActionString(action),(int)(st->st_mode),
  	   (int)st->st_nlink, (int)st->st_uid,
  	   (int)st->st_gid, (int)st->st_size,
  	    (dn ? dn : ""), (fpath ? fpath : ""));
-@@ -550,7 +616,7 @@ static int fsmRename(int odirfd, const char *opath, int dirfd, const char *path)
- 
- static int fsmRemove(int dirfd, const char *path, mode_t mode)
- {
--    return S_ISDIR(mode) ? fsmRmdir(dirfd, path) : fsmUnlink(dirfd, path);
-+    return S_ISDIR(to_native_mode(mode)) ? fsmRmdir(dirfd, path) : fsmUnlink(dirfd, path);
- }
- 
- static int fsmChown(int fd, int dirfd, const char *path, mode_t mode, uid_t uid, gid_t gid)
-@@ -590,31 +656,32 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
-     mode_t fmode = (mode & 07777);
-     int rc;
-     if (fd >= 0) {
--	rc = fchmod(fd, fmode);
-+	rc = fchmod(fd, to_native_mode(fmode));
+@@ -593,7 +608,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
+ 	rc = fchmod(fd, fmode);
  	if (rc < 0) {
  	    struct stat st;
 -	    if (fstat(fd, &st) == 0 && (st.st_mode & 07777) == fmode) {
-+	    if (fstat(fd, &st) == 0 && to_native_mode(st.st_mode & 07777) == to_native_mode(fmode)) {
++	    if (fstat(fd, &st) == 0 && (st.st_mode & 07777) == (fmode)) {
  		rc = 0;
  	    }
  	}
-     } else {
--	rc = fchmodat(dirfd, path, fmode, 0);
-+	rc = fchmodat(dirfd, path, to_native_mode(fmode), 0);
+@@ -602,7 +617,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
  	if (rc < 0) {
  	    struct stat st;
  	    if (fstatat(dirfd, path, &st, AT_SYMLINK_NOFOLLOW) == 0 &&
 -		    (st.st_mode & 07777) == fmode) {
-+		    to_native_mode(st.st_mode & 07777) == to_native_mode(fmode)) {
++		    (st.st_mode & 07777) == (fmode)) {
  		rc = 0;
  	    }
  	}
-     }
-     if (_fsm_debug)
- 	rpmlog(RPMLOG_DEBUG, " %8s (%d - %d %s, 0%04o) %s\n", __func__,
--	       fd, dirfd, path, (unsigned)(mode & 07777),
-+	       fd, dirfd, path, (unsigned)to_native_mode(mode & 07777),
- 	       (rc < 0 ? strerror(errno) : ""));
-     if (rc < 0)	rc = RPMERR_CHMOD_FAILED;
+@@ -615,6 +630,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
      return rc;
  }
  
@@ -259,7 +142,7 @@ index 63580c2..96e032e 100644
  static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mtime)
  {
      int rc = 0;
-@@ -637,6 +704,37 @@ static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mti
+@@ -637,6 +653,37 @@ static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mti
  	rc = 0;
      return rc;
  }
@@ -290,148 +173,46 @@ index 63580c2..96e032e 100644
 +               fd, dirfd, path, (unsigned)mtime, (rc < 0 ? strerror(errno) : ""));
 +    if (rc < 0) rc = RPMERR_UTIME_FAILED;
 +    /* ...but utime error is not critical for directories */
-+    if (rc && S_ISDIR(to_native_mode(mode)))
++    if (rc && S_ISDIR(mode))
 +        rc = 0;
 +    return rc;
 +}
  
  static int fsmVerify(int dirfd, const char *path, rpmfi fi)
  {
-@@ -649,7 +747,7 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
-     if (rc)
- 	return rc;
- 
--    if (S_ISREG(mode)) {
-+    if (S_ISREG(to_native_mode(mode))) {
- 	/* HP-UX (and other os'es) don't permit unlink on busy files. */
- 	char *rmpath = rstrscat(NULL, path, "-RPMDELETE", NULL);
- 	rc = fsmRename(dirfd, path, dirfd, rmpath);
-@@ -660,20 +758,20 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
- 	    rc = RPMERR_UNLINK_FAILED;
- 	free(rmpath);
-         return (rc ? rc : RPMERR_ENOENT);	/* XXX HACK */
--    } else if (S_ISDIR(mode)) {
--        if (S_ISDIR(dsb.st_mode)) return 0;
--        if (S_ISLNK(dsb.st_mode)) {
-+    } else if (S_ISDIR(to_native_mode(mode))) {
-+        if (S_ISDIR(to_native_mode(dsb.st_mode))) return 0;
-+        if (S_ISLNK(to_native_mode(dsb.st_mode))) {
- 	    uid_t luid = dsb.st_uid;
-             rc = fsmStat(dirfd, path, 0, &dsb);
-             if (rc == RPMERR_ENOENT) rc = 0;
-             if (rc) return rc;
-             errno = saveerrno;
- 	    /* Only permit directory symlinks by target owner and root */
--            if (S_ISDIR(dsb.st_mode) && (luid == 0 || luid == dsb.st_uid))
-+            if (S_ISDIR(to_native_mode(dsb.st_mode)) && (luid == 0 || luid == dsb.st_uid))
- 		    return 0;
-         }
--    } else if (S_ISLNK(mode)) {
--        if (S_ISLNK(dsb.st_mode)) {
-+    } else if (S_ISLNK(to_native_mode(mode))) {
-+        if (S_ISLNK(to_native_mode(dsb.st_mode))) {
-             char buf[8 * BUFSIZ];
-             size_t len;
-             rc = fsmReadLink(path, buf, 8 * BUFSIZ, &len);
-@@ -681,13 +779,13 @@ static int fsmVerify(int dirfd, const char *path, rpmfi fi)
-             if (rc) return rc;
-             if (rstreq(rpmfiFLink(fi), buf)) return 0;
-         }
--    } else if (S_ISFIFO(mode)) {
--        if (S_ISFIFO(dsb.st_mode)) return 0;
--    } else if (S_ISCHR(mode) || S_ISBLK(mode)) {
--        if ((S_ISCHR(dsb.st_mode) || S_ISBLK(dsb.st_mode)) &&
-+    } else if (S_ISFIFO(to_native_mode(mode))) {
-+        if (S_ISFIFO(to_native_mode(dsb.st_mode))) return 0;
-+    } else if (S_ISCHR(to_native_mode(mode)) || S_ISBLK(to_native_mode(mode))) {
-+        if ((S_ISCHR(to_native_mode(dsb.st_mode)) || S_ISBLK(to_native_mode(dsb.st_mode))) &&
-             (dsb.st_rdev == rpmfiFRdev(fi))) return 0;
--    } else if (S_ISSOCK(mode)) {
--        if (S_ISSOCK(dsb.st_mode)) return 0;
-+    } else if (S_ISSOCK(to_native_mode(mode))) {
-+        if (S_ISSOCK(to_native_mode(dsb.st_mode))) return 0;
+@@ -748,19 +795,19 @@ static int fsmSetmeta(int fd, int dirfd, const char *path,
+ 	rc = fsmChown(fd, dirfd, path, st->st_mode, st->st_uid, st->st_gid);
      }
-     /* XXX shouldn't do this with commit/undo. */
-     rc = fsmUnlink(dirfd, path);
-@@ -745,22 +843,22 @@ static int fsmSetmeta(int fd, int dirfd, const char *path,
-     char *dest = xstrdup(rpmfiFN(fi));
- 
-     if (!rc && !getuid()) {
--	rc = fsmChown(fd, dirfd, path, st->st_mode, st->st_uid, st->st_gid);
-+	rc = fsmChown(fd, dirfd, path, to_native_mode(st->st_mode), st->st_uid, st->st_gid);
-     }
--    if (!rc && !S_ISLNK(st->st_mode)) {
+     if (!rc && !S_ISLNK(st->st_mode)) {
 -	rc = fsmChmod(fd, dirfd, path, st->st_mode);
-+    if (!rc && !S_ISLNK(to_native_mode(st->st_mode))) {
-+	rc = fsmChmod(fd, dirfd, path, to_native_mode(st->st_mode));
++	rc = fsmChmod(fd, dirfd, path, (st->st_mode));
      }
      /* Set file capabilities (if enabled) */
--    if (!rc && !nofcaps && S_ISREG(st->st_mode) && !getuid()) {
-+    if (!rc && !nofcaps && S_ISREG(to_native_mode(st->st_mode)) && !getuid()) {
+     if (!rc && !nofcaps && S_ISREG(st->st_mode) && !getuid()) {
  	rc = fsmSetFCaps(fd, dirfd, path, rpmfiFCaps(fi));
      }
      if (!rc) {
 -	rc = fsmUtime(fd, dirfd, path, st->st_mode, rpmfiFMtime(fi));
-+	rc = fsmUtime(fd, dirfd, path, to_native_mode(st->st_mode), rpmfiFMtime(fi));
++	rc = fsmUtime(fd, dirfd, path, (st->st_mode), rpmfiFMtime(fi));
      }
      if (!rc) {
  	rc = rpmpluginsCallFsmFilePrepare(plugins, fi,
  					  fd, path, dest,
 -					  st->st_mode, action);
-+					  to_native_mode(st->st_mode), action);
++					  (st->st_mode), action);
      }
      free(dest);
  
-@@ -961,7 +1059,7 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
+@@ -961,7 +1008,7 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
  	    /* Run fsm file pre hook for all plugins */
  	    if (!rc)
  		rc = rpmpluginsCallFsmFilePre(plugins, fi, fp->fpath,
 -					      fp->sb.st_mode, fp->action);
-+					      to_native_mode(fp->sb.st_mode), fp->action);
++					      (fp->sb.st_mode), fp->action);
  	    if (rc)
  		goto setmeta; /* for error notification */
  
-@@ -989,51 +1087,52 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
- 	    if (fp->action == FA_TOUCH)
- 		goto setmeta;
- 
--            if (S_ISREG(fp->sb.st_mode)) {
-+            if (S_ISREG(to_native_mode(fp->sb.st_mode))) {
- 		if (rc == RPMERR_ENOENT) {
- 		    rc = fsmMkfile(di.dirfd, fi, fp, files, psm, nodigest,
- 				   &firstlink, &firstlinkfile, &di.firstdir,
- 				   &fd);
- 		}
--            } else if (S_ISDIR(fp->sb.st_mode)) {
-+            } else if (S_ISDIR(to_native_mode(fp->sb.st_mode))) {
-                 if (rc == RPMERR_ENOENT) {
-                     mode_t mode = fp->sb.st_mode;
-                     mode &= ~07777;
-                     mode |=  00700;
--                    rc = fsmMkdir(di.dirfd, fp->fpath, mode);
-+                    rc = fsmMkdir(di.dirfd, fp->fpath, to_native_mode(mode));
-                 }
--            } else if (S_ISLNK(fp->sb.st_mode)) {
-+            } else if (S_ISLNK(to_native_mode(fp->sb.st_mode))) {
- 		if (rc == RPMERR_ENOENT) {
- 		    rc = fsmSymlink(rpmfiFLink(fi), di.dirfd, fp->fpath);
- 		}
--            } else if (S_ISFIFO(fp->sb.st_mode)) {
-+            } else if (S_ISFIFO(to_native_mode(fp->sb.st_mode))) {
-                 /* This mimics cpio S_ISSOCK() behavior but probably isn't right */
-                 if (rc == RPMERR_ENOENT) {
-                     rc = fsmMkfifo(di.dirfd, fp->fpath, 0000);
-                 }
--            } else if (S_ISCHR(fp->sb.st_mode) ||
--                       S_ISBLK(fp->sb.st_mode) ||
--                       S_ISSOCK(fp->sb.st_mode))
-+            } else if (S_ISCHR(to_native_mode(fp->sb.st_mode)) ||
-+                       S_ISBLK(to_native_mode(fp->sb.st_mode)) ||
-+                       S_ISSOCK(to_native_mode(fp->sb.st_mode)))
-             {
-                 if (rc == RPMERR_ENOENT) {
--                    rc = fsmMknod(di.dirfd, fp->fpath, fp->sb.st_mode, fp->sb.st_rdev);
-+                    rc = fsmMknod(di.dirfd, fp->fpath, to_native_mode(fp->sb.st_mode), fp->sb.st_rdev);
+@@ -1020,8 +1067,9 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
                  }
              } else {
                  /* XXX Special case /dev/log, which shouldn't be packaged anyways */
@@ -442,70 +223,12 @@ index 63580c2..96e032e 100644
              }
  
  setmeta:
- 	    /* Special files require path-based ops */
--	    mayopen = S_ISREG(fp->sb.st_mode) || S_ISDIR(fp->sb.st_mode);
-+	    mayopen = S_ISREG(to_native_mode(fp->sb.st_mode)) || S_ISDIR(to_native_mode(fp->sb.st_mode));
- 	    if (!rc && fd == -1 && mayopen) {
- 		int flags = O_RDONLY;
- 		/* Only follow safe symlinks, and never on temporary files */
- 		if (fp->suffix)
- 		    flags |= AT_SYMLINK_NOFOLLOW;
- 		rc = fsmOpenat(&fd, di.dirfd, fp->fpath, flags,
--				S_ISDIR(fp->sb.st_mode));
-+				S_ISDIR(to_native_mode(fp->sb.st_mode)));
- 	    }
- 
- 	    if (!rc && fp->setmeta) {
-@@ -1081,7 +1180,7 @@ setmeta:
- 
- 	    /* Run fsm file post hook for all plugins for all processed files */
- 	    rpmpluginsCallFsmFilePost(plugins, fi, fp->fpath,
--				      fp->sb.st_mode, fp->action, rc);
-+				      to_native_mode(fp->sb.st_mode), fp->action, rc);
- 	}
-     }
-     fi = fsmIterFini(fi, &di);
-@@ -1097,7 +1196,7 @@ setmeta:
- 		continue;
- 
- 	    if (fp->stage > FILE_NONE && !fp->skip && fp->action != FA_TOUCH) {
--		(void) fsmRemove(di.dirfd, fp->fpath, fp->sb.st_mode);
-+		(void) fsmRemove(di.dirfd, fp->fpath, to_native_mode(fp->sb.st_mode));
- 	    }
- 	}
-     }
-@@ -1147,7 +1246,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
- 
- 	/* Run fsm file pre hook for all plugins */
- 	rc = rpmpluginsCallFsmFilePre(plugins, fi, fp->fpath,
--				      fp->sb.st_mode, fp->action);
-+				      to_native_mode(fp->sb.st_mode), fp->action);
- 
- 	rc = fsmBackup(di.dirfd, fi, fp->action);
- 
-@@ -1155,7 +1254,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
+@@ -1155,7 +1203,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
          if (fp->action == FA_ERASE) {
  	    int missingok = (rpmfiFFlags(fi) & (RPMFILE_MISSINGOK | RPMFILE_GHOST));
  
 -	    rc = fsmRemove(di.dirfd, fp->fpath, fp->sb.st_mode);
-+	    rc = fsmRemove(di.dirfd, fp->fpath, to_native_mode(fp->sb.st_mode));
++	    rc = fsmRemove(di.dirfd, fp->fpath, (fp->sb.st_mode));
  
  	    /*
  	     * Missing %ghost or %missingok entries are not errors.
-@@ -1180,14 +1279,14 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
- 	    if (rc) {
- 		int lvl = strict_erasures ? RPMLOG_ERR : RPMLOG_WARNING;
- 		rpmlog(lvl, _("%s %s%s: remove failed: %s\n"),
--			S_ISDIR(fp->sb.st_mode) ? _("directory") : _("file"),
-+			S_ISDIR(to_native_mode(fp->sb.st_mode)) ? _("directory") : _("file"),
- 			rpmfiDN(fi), fp->fpath, strerror(errno));
-             }
-         }
- 
- 	/* Run fsm file post hook for all plugins */
- 	rpmpluginsCallFsmFilePost(plugins, fi, fp->fpath,
--				  fp->sb.st_mode, fp->action, rc);
-+				  to_native_mode(fp->sb.st_mode), fp->action, rc);
- 
-         /* XXX Failure to remove is not (yet) cause for failure. */
-         if (!strict_erasures) rc = 0;
