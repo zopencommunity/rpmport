@@ -20,3 +20,16 @@ index 76b360b..bc4fd7e 100755
  
  # If using normal root, avoid changing anything.
  if [ -z "$RPM_BUILD_ROOT" ] || [ "$RPM_BUILD_ROOT" = "/" ]; then
+diff --git a/scripts/check-files b/scripts/check-files
+index 12bacfb..f0cc8c9 100755
+--- a/scripts/check-files
++++ b/scripts/check-files
+@@ -23,7 +23,7 @@ fi
+ FILES_DISK=`mktemp "${TMPDIR}/rpmXXXXXX"`
+ 
+ # Ensure temporary file is cleaned up when we exit
+-trap "rm -f \"${FILES_DISK}\"" 0 2 3 5 10 13 15
++trap "rm -f \"${FILES_DISK}\"" 0 INT QUIT TRAP USR1 PIPE TERM
+ 
+ # Find non-directory files in the build root and compare to the manifest.
+ # TODO: regex chars in last sed(1) expression should be escaped
