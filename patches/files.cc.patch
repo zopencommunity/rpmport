@@ -1,0 +1,59 @@
+diff --git a/build/files.cc b/build/files.cc
+index fba2aff..9420ce5 100644
+--- a/build/files.cc
++++ b/build/files.cc
+@@ -1101,7 +1101,7 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
+     std::sort(fl->files.begin(), fl->files.end());
+     
+     pkg->dpaths = (char **)xmalloc((fl->files.size() + 1) * sizeof(*pkg->dpaths));
+-
++    std::vector<uint16_t> allModes;
+     /* Generate the header. */
+     for (i = 0, flp = fl->files.data(); i < fl->files.size(); i++, flp++) {
+ 	rpm_ino_t fileid = flp - fl->files.data();
+@@ -1112,7 +1112,6 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
+ 
+ 	    /* Two entries for the same file found, merge the entries. */
+ 	    /* Note that an %exclude is a duplication of a file reference */
+-
+ 	    /* file flags */
+ 	    flp[1].flags |= flp->flags;	
+ 
+@@ -1185,6 +1184,7 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
+ 	    rpm_off_t rsize32 = (rpm_off_t)flp->fl_size;
+ 	    headerPutUint32(h, RPMTAG_FILESIZES, &rsize32, 1);
+ 	}
++	allModes.push_back((rpm_mode_t)flp->fl_mode);
+ 	/* Excludes and dupes have been filtered out by now. */
+ 	if (isLinkable(flp->fl_mode)) {
+ 	    if (flp->fl_nlink == 1 || !seenHardLink(fl->files, flp, &fileid)) {
+@@ -1204,10 +1204,6 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
+ 	    headerPutUint32(h, RPMTAG_FILEMTIMES, &rtime, 1);
+ 	}
+ 
+-	{   rpm_mode_t rmode = (rpm_mode_t) flp->fl_mode;
+-	    headerPutUint16(h, RPMTAG_FILEMODES, &rmode, 1);
+-	}
+-
+ 	{   rpm_rdev_t rrdev = (rpm_rdev_t) flp->fl_rdev;
+ 	    headerPutUint16(h, RPMTAG_FILERDEVS, &rrdev, 1);
+ 	}
+@@ -1279,6 +1275,9 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
+ 	headerPutUint32(h, RPMTAG_FILEFLAGS, &(flp->flags) ,1);
+     }
+     pkg->dpaths[npaths] = NULL;
++    if (!allModes.empty()) {
++        headerPutUint16(h, RPMTAG_FILEMODES, allModes.data(), allModes.size());
++    }
+ 
+     /* Use 64bit sizes always on v6, on older only if required. */
+     if (spec->rpmformat < 6 && totalFileSize < UINT32_MAX) {
+@@ -1484,7 +1483,7 @@ static rpmRC addFile(FileList fl, const char * diskPath,
+ 	return recurseDir(fl, diskPath);
+     }
+ 
+-    fileMode = statp->st_mode;
++    fileMode = statp->st_mode & (S_IFMT | 07777);
+ 
+     /* Explicit %attr() always wins */
+     if (fl->cur.ar.ar_fmodestr) {

@@ -1,8 +1,16 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index af9c5da..2abf791 100644
+index af9c5da..0cd2341 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -157,8 +157,8 @@ function(makemacros)
+@@ -78,7 +78,6 @@ function(findutil UTIL TRY)
+ 		PATHS ENV MYPATH
+ 		PATHS /usr/local/bin /usr/bin /bin
+ 		PATHS /usr/local/sbin /usr/sbin /sbin
+-		NO_DEFAULT_PATH
+ 	)
+ 	if (NOT ${UTIL})
+ 		list(GET TRY 0 util)
+@@ -157,8 +156,8 @@ function(makemacros)
  
  	list(GET db_backends 0 DB_BACKEND)
  
@@ -13,7 +21,7 @@ index af9c5da..2abf791 100644
  	set(host_vendor ${RPM_VENDOR})
  	set(host ${host_cpu}-${host_vendor}-${host_os})
  
-@@ -196,15 +196,26 @@ set(REQFUNCS
+@@ -196,16 +195,31 @@ set(REQFUNCS
  	mkstemp getcwd basename dirname realpath setenv unsetenv regcomp
  	utimes getline localtime_r statvfs getaddrinfo
  	openat mkdirat fstatat linkat symlinkat mkfifoat mknodat unlinkat
@@ -39,9 +47,14 @@ index af9c5da..2abf791 100644
  endif()
 +
  if (WITH_ICONV)
++    message(STATUS "LIBICONV_HOME is: ${LIBICONV_HOME}")
++    set(Iconv_INCLUDE_DIR "${LIBICONV_HOME}/include")
++    set(Iconv_LIBRARY "${LIBICONV_HOME}/lib/libiconv.a")  # or .so if shared
++    set(Iconv_FOUND TRUE)
      find_package(Iconv REQUIRED)
  endif()
-@@ -241,6 +252,7 @@ find_library(MAGIC_LIBRARY NAMES magic REQUIRED)
+ 
+@@ -241,6 +255,7 @@ find_library(MAGIC_LIBRARY NAMES magic REQUIRED)
  find_path(MAGIC_INCLUDE_DIR NAMES magic.h REQUIRED)
  mark_as_advanced(MAGIC_LIBRARY)
  mark_as_advanced(MAGIC_INCLUDE_DIR)
@@ -49,7 +62,7 @@ index af9c5da..2abf791 100644
  set_target_properties(MAGIC::MAGIC PROPERTIES
  		      IMPORTED_LOCATION "${MAGIC_LIBRARY}")
  target_include_directories(MAGIC::MAGIC INTERFACE "${MAGIC_INCLUDE_DIR}")
-@@ -391,7 +403,7 @@ if (LIBDW_FOUND)
+@@ -391,7 +406,7 @@ if (LIBDW_FOUND)
  	set(HAVE_LIBDW 1)
  	check_library_exists(dw dwelf_elf_begin "" HAVE_DWELF_ELF_BEGIN)
  endif()
@@ -58,7 +71,7 @@ index af9c5da..2abf791 100644
  check_symbol_exists(GLOB_ONLYDIR "glob.h" HAVE_GLOB_ONLYDIR)
  check_symbol_exists(major "sys/sysmacros.h" MAJOR_IN_SYSMACROS)
  if (NOT MAJOR_IN_SYSMACROS)
-@@ -553,7 +565,7 @@ install(FILES
+@@ -553,7 +568,7 @@ install(FILES
  	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rpm
  )
  

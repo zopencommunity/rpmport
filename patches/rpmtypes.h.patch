@@ -1,0 +1,85 @@
+diff --git a/include/rpm/rpmtypes.h b/include/rpm/rpmtypes.h
+index e5ac7a3..dffb631 100644
+--- a/include/rpm/rpmtypes.h
++++ b/include/rpm/rpmtypes.h
+@@ -50,7 +50,8 @@ typedef uint32_t	rpmFlags;
+ typedef uint32_t	rpm_off_t;
+ typedef uint64_t	rpm_loff_t;
+ typedef uint32_t	rpm_time_t;
+-typedef uint16_t	rpm_mode_t;
++typedef uint32_t	rpm_mode_t;
++//typedef uint16_t	rpm_mode_t;
+ typedef uint16_t	rpm_rdev_t;
+ typedef uint32_t	rpm_dev_t;
+ typedef uint32_t	rpm_ino_t;
+@@ -110,6 +111,70 @@ typedef	enum rpmRC_e {
+     RPMRC_NOKEY		= 4	/*!< Public key is unavailable. */
+ } rpmRC;
+ 
++#ifdef __MVS__
++#include <sys/types.h>
++#include <sys/stat.h>
++#  define LINUX_S_IFIFO       0010000   /* [XSI] named pipe (fifo) */
++#  define LINUX_S_IFCHR       0020000   /* [XSI] character special */
++#  define LINUX_S_IFDIR       0040000   /* [XSI] directory */
++#  define LINUX_S_IFBLK       0060000   /* [XSI] block special */
++#  define LINUX_S_IFREG       0100000   /* [XSI] regular */
++#  define LINUX_S_IFLNK       0120000   /* [XSI] symbolic link */
++#  define LINUX_S_IFSOCK      0140000   /* [XSI] socket */
++
++#  define ZOS_S_IFIFO       0x04000000  /* named pipe (fifo) */
++#  define ZOS_S_IFCHR       0x02000000  /* character special */
++#  define ZOS_S_IFDIR       0x01000000  /* directory */
++#  define ZOS_S_IFBLK       0x06000000  /* block special */
++#  define ZOS_S_IFREG       0x03000000  /* regular */
++#  define ZOS_S_IFLNK       0x05000000  /* symbolic link */
++#  define ZOS_S_IFSOCK      0x07000000  /* socket */
++
++#  define ZOS_S_IFMT        0xFF000000  /* mask */
++
++/*
++ *  *  * z/OS has a 'mode_t' that is 32 bits in size, whereas
++ *   *  * Linux has a 'mode_t' that is 16 bits in size.
++ *    *  * The bottom 3 nibbles are the same, but z/OS uses
++ *     *  * the top word for the st_mode parts of mode and
++ *      *  * Linux uses the top nibble
++ *       *  */
++static inline mode_t
++to_linux_mode(unsigned int inmode)
++{
++      mode_t outmode = (mode_t) (inmode & 0777);
++
++      if ((inmode & ZOS_S_IFMT) == ZOS_S_IFIFO) { outmode |= LINUX_S_IFIFO; }
++      if ((inmode & ZOS_S_IFMT) == ZOS_S_IFCHR) { outmode |= LINUX_S_IFCHR; }
++      if ((inmode & ZOS_S_IFMT) == ZOS_S_IFDIR) { outmode |= LINUX_S_IFDIR; }
++      if ((inmode & ZOS_S_IFMT) == ZOS_S_IFBLK) { outmode |= LINUX_S_IFBLK; }
++      if ((inmode & ZOS_S_IFMT) == ZOS_S_IFREG) { outmode |= LINUX_S_IFREG; }
++      if ((inmode & ZOS_S_IFMT) == ZOS_S_IFLNK) { outmode |= LINUX_S_IFLNK; }
++      if ((inmode & ZOS_S_IFMT) == ZOS_S_IFSOCK) { outmode |= LINUX_S_IFSOCK; }
++      return outmode;
++}
++
++static inline unsigned int
++to_zos_mode(mode_t inmode)
++{
++       unsigned int outmode = (unsigned int) (inmode & 0777);
++
++       if (inmode & LINUX_S_IFIFO) { outmode |= ZOS_S_IFIFO; }
++       if (inmode & LINUX_S_IFCHR) { outmode |= ZOS_S_IFCHR; }
++       if (inmode & LINUX_S_IFDIR) { outmode |= ZOS_S_IFDIR; }
++       if (inmode & LINUX_S_IFBLK) { outmode |= ZOS_S_IFBLK; }
++       if (inmode & LINUX_S_IFREG) { outmode |= ZOS_S_IFREG; }
++       if (inmode & LINUX_S_IFLNK) { outmode |= ZOS_S_IFLNK; }
++       if (inmode & LINUX_S_IFSOCK) { outmode |= ZOS_S_IFSOCK; }
++       return outmode;
++}
++
++//#define to_native_mode(inmode) (to_zos_mode(inmode))
++#define to_native_mode(inmode) (inmode)
++#else
++#define to_native_mode(inmode) (inmode)
++#endif /* !ARCHIVE_PLATFORM_H_INCLUDED */
++///
+ #ifdef __cplusplus
+ }
+ #endif

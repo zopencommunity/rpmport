@@ -1,0 +1,71 @@
+diff --git a/lib/rpmfi.cc b/lib/rpmfi.cc
+index d5d7bde..68f38f1 100644
+--- a/lib/rpmfi.cc
++++ b/lib/rpmfi.cc
+@@ -509,6 +509,15 @@ rpm_mode_t rpmfilesFMode(rpmfiles fi, int ix)
+     if (fi != NULL && ix >= 0 && ix < rpmfilesFC(fi)) {
+ 	if (fi->fmodes != NULL)
+ 	    fmode = fi->fmodes[ix];
++#ifdef __MVS__
++	//normalise 
++	fmode = to_linux_mode(fmode);
++	
++        /* If only perms are stored, add regular file type */
++        if ((fmode & S_IFMT) == 0) {
++           fmode |= S_IFREG;   /* assume regular file by default */
++        }
++#endif
+     }
+     return fmode;
+ }
+@@ -813,7 +822,7 @@ int rpmfilesStat(rpmfiles fi, int ix, int flags, struct stat *sb)
+ 	/* Only regular files and symlinks have a size */
+ 	if (S_ISREG(sb->st_mode) || S_ISLNK(sb->st_mode))
+ 	    sb->st_size = rpmfilesFSize(fi, ix);
+-
++#ifndef __MVS__
+ 	if (user && rpmugUid(user, &sb->st_uid)) {
+ 	    if (warn)
+ 		rpmlog(RPMLOG_WARNING,
+@@ -827,7 +836,7 @@ int rpmfilesStat(rpmfiles fi, int ix, int flags, struct stat *sb)
+ 			_("group %s does not exist - using %s\n"), group, GID_0_GROUP);
+ 	    sb->st_mode &= ~S_ISGID;	/* turn off sgid bit */
+ 	}
+-
++#endif
+ 	rc = 0;
+     }
+     return rc;
+@@ -1573,8 +1582,22 @@ static int rpmfilesPopulate(rpmfiles fi, Header h, rpmfiFlags flags)
+     rpm_count_t totalfc = rpmfilesFC(fi);
+ 
+     /* XXX TODO: all these should be sanity checked, ugh... */
+-    if (!(flags & RPMFI_NOFILEMODES))
+-	_hgfi(h, RPMTAG_FILEMODES, &td, scareFlags, fi->fmodes);
++    if (!(flags & RPMFI_NOFILEMODES)) {
++        uint16_t *modes16 = NULL;
++        _hgfi(h, RPMTAG_FILEMODES, &td, scareFlags, modes16);
++       if (modes16) {
++             fi->fmodes = (rpm_mode_t *) xmalloc(totalfc * sizeof(*fi->fmodes));
++             for (rpm_count_t i = 0; i < totalfc; i++) {
++                 /* mask to 16-bit then promote to full rpm_mode_t to avoid garbage high bits */
++                 fi->fmodes[i] = (rpm_mode_t)(modes16[i] & 0xffff);
++                 /* Optionally restore common S_IF* bits if needed by your environment.
++                        *                Do NOT guess type here; keep raw mode bits from header. */
++                 fprintf(stderr, "rpmfilesPopulate: modes16[%u]=%o -> fi->fmodes[%u]=%o\n",
++                           (unsigned)i, modes16[i], (unsigned)i, fi->fmodes[i]);
++             }
++       }
++    }
++
+     if (!(flags & RPMFI_NOFILEFLAGS))
+ 	_hgfi(h, RPMTAG_FILEFLAGS, &td, scareFlags, fi->fflags);
+     if (!(flags & RPMFI_NOFILEVERIFYFLAGS))
+@@ -1937,6 +1960,7 @@ int rpmfiStat(rpmfi fi, int flags, struct stat *sb)
+     int rc = -1;
+     if (fi != NULL) {
+ 	rc = rpmfilesStat(fi->files, fi->i, flags, sb);
++	fprintf(stderr, "DEBUG: rpmfiStat -> sb.st_mode = %o\n", sb->st_mode);
+ 	/* In archives, hardlinked files are empty except for the last one */
+ 	if (rc == 0 && fi->archive && sb->st_nlink > 1) {
+ 	    const int *links = NULL;
