@@ -1,6 +1,6 @@
 export ZOPEN_BUILD_LINE="STABLE"
 
-export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm/releases/download/rpm-6.0.0-beta/rpm-5.99.91.tar.bz2"  # Specify the stable build URL (either git or tarball)
+export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm/releases/download/rpm-6.0.0-release/rpm-6.0.0.tar.bz2"  # Specify the stable build URL (either git or tarball)
 export ZOPEN_STABLE_DEPS="bash coreutils zstd unzip git gawk patch grep sed file xz tar grep cpio libgpgerror zstd popt readline lua pkgconfig cmake zlib unzip libarchive scdoc libgcrypt openssl sqlite bzip2 gzip xz gettext make autoconf automake libtool perl m4 tar libiconv gpg doxygen lz4" # Specify the stable build dependencies.
 
 ## Required IF ZOPEN_BUILD_LINE='DEV'
