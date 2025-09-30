@@ -1,5 +1,5 @@
 diff --git a/rpmio/CMakeLists.txt b/rpmio/CMakeLists.txt
-index 3148522..229361c 100644
+index 65d22f6..e31c206 100644
 --- a/rpmio/CMakeLists.txt
 +++ b/rpmio/CMakeLists.txt
 @@ -1,14 +1,14 @@
@@ -24,7 +24,7 @@ index 3148522..229361c 100644
 @@ -23,30 +23,30 @@ endif()
  
  if (WITH_SEQUOIA)
- 	pkg_check_modules(RPMSEQUOIA REQUIRED IMPORTED_TARGET rpm-sequoia>=1.8.0)
+ 	pkg_check_modules(RPMSEQUOIA REQUIRED IMPORTED_TARGET rpm-sequoia>=1.9.0)
 -	target_sources(librpmio PRIVATE rpmpgp_sequoia.cc)
 -	target_link_libraries(librpmio PRIVATE PkgConfig::RPMSEQUOIA)
 +	target_sources(rpmio PRIVATE rpmpgp_sequoia.cc)
