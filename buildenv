@@ -1,5 +1,4 @@
-# Update bump details accordingly. Use bump check to confirm.
-# bump: rpm-version /RPM_VERSION="(.*)"/ https://github.com/rpm-software-management/rpm/releases|re:#href=".*?releases/tag/rpm-([\d.]+)-release"#$1#
+# bump: rpm-version /RPM_VERSION="(.*)"/ gitrefs:https://github.com/rpm-software-management/rpm.git|re:/rpm-([\d.]+)-release/$1/|*
 RPM_VERSION="6.0.0"
 
 export ZOPEN_BUILD_LINE="STABLE"
