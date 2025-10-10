@@ -1,0 +1,131 @@
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index 5def091..30c7e1d 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -102,8 +102,8 @@ if (MKTREE_BACKEND STREQUAL oci)
+ 	find_program(PODMAN NAMES podman docker REQUIRED)
+ elseif (MKTREE_BACKEND STREQUAL rootfs)
+ 	set(MKTREE_NATIVE yes)
+-	find_program(BWRAP bwrap REQUIRED)
+-	mark_as_advanced(BWRAP)
++  #find_program(BWRAP bwrap REQUIRED)
++  #mark_as_advanced(BWRAP)
+ endif()
+ message(STATUS "Using mktree backend: ${MKTREE_BACKEND} "
+ 	       "(native: ${MKTREE_NATIVE})")
+diff --git a/tests/atlocal.in b/tests/atlocal.in
+index fb69213..23565b0 100644
+--- a/tests/atlocal.in
++++ b/tests/atlocal.in
+@@ -87,12 +87,13 @@ snapshot()
+             return 0
+         ;;
+         exec)
+-            bwrap --unshare-pid --dev-bind $RPMTEST / --clearenv \
+-                  --setenv PATH $(env -i sh -c 'echo $PATH') \
+-                  --setenv HOME /root \
+-                  --setenv USER root \
+-                  --setenv GPG_TTY "" \
+-                  --chdir / --dev /dev --proc /proc --die-with-parent "$@"
++            #bwrap --unshare-pid --dev-bind $RPMTEST / --clearenv \
++            #      --setenv PATH $(env -i sh -c 'echo $PATH') \
++            #      --setenv HOME /root \
++            #      --setenv USER root \
++            #      --setenv GPG_TTY "" \
++            #      --chdir / --dev /dev --proc /proc --die-with-parent "$@"
++            exec "$@"
+         ;;
+         shell)
+             local source=$(findmnt -no SOURCE --mountpoint $RPMTEST)
+diff --git a/tests/mktree.common b/tests/mktree.common
+index 7a6de3d..a2f9d0e 100644
+--- a/tests/mktree.common
++++ b/tests/mktree.common
+@@ -1,14 +1,14 @@
+ # Build and install RPM and the test-suite data into a directory
+ make_install()
+ {
+-    export DESTDIR=$1
++    export DESTDIR=""
+     local ld_conf_dir=$DESTDIR/@CMAKE_INSTALL_SYSCONFDIR@/ld.so.conf.d
+     local script_dir=/usr/share/mktree
+ 
+     @CMAKE_MAKE_PROGRAM@ -C @CMAKE_BINARY_DIR@ install
+     mkdir -p $ld_conf_dir
+     echo @CMAKE_INSTALL_FULL_LIBDIR@ > $ld_conf_dir/rpm.conf
+-    ldconfig -r $DESTDIR @CMAKE_INSTALL_FULL_LIBDIR@
++    #ldconfig -r $DESTDIR @CMAKE_INSTALL_FULL_LIBDIR@
+ 
+     cp -r @CMAKE_CURRENT_SOURCE_DIR@/data $DESTDIR/
+     cp -r @CMAKE_CURRENT_SOURCE_DIR@/pinned $DESTDIR/
+@@ -16,11 +16,12 @@ make_install()
+     mkdir -p $DESTDIR/usr/bin
+     cp @TESTPROG_NAMES@ $DESTDIR/usr/bin/
+     cp @CMAKE_CURRENT_SOURCE_DIR@/prpm.py $DESTDIR/usr/bin/
++    rm /usr/bin/rpmtests
+     ln -s $script_dir/rpmtests.sh $DESTDIR/usr/bin/rpmtests
+ 
+-    mkdir -p $DESTDIR/$script_dir
+-    cp rpmtests atlocal mktree.common setup.sh $DESTDIR/$script_dir/
+-    cp @CMAKE_CURRENT_SOURCE_DIR@/rpmtests.sh $DESTDIR/$script_dir/
++    mkdir -p $script_dir
++    cp rpmtests atlocal mktree.common setup.sh $script_dir/
++    cp @CMAKE_CURRENT_SOURCE_DIR@/rpmtests.sh $script_dir/
+ 
+-    touch $DESTDIR/.rpmtestsuite
++    touch /.rpmtestsuite
+ }
+diff --git a/tests/mktree.rootfs b/tests/mktree.rootfs
+index 4357c28..a3e0c6e 100755
+--- a/tests/mktree.rootfs
++++ b/tests/mktree.rootfs
+@@ -13,8 +13,8 @@ CMD=$1; shift
+ case $CMD in
+     build)
+         source ./mktree.common
+-        make_install /
+-        ./setup.sh /
++        make_install ""
++        ./setup.sh ""
+     ;;
+     check)
+         ./rpmtests "$@"
+diff --git a/tests/rpmpgpcheck.c b/tests/rpmpgpcheck.c
+index baae2a1..74ab9e4 100644
+--- a/tests/rpmpgpcheck.c
++++ b/tests/rpmpgpcheck.c
+@@ -27,7 +27,7 @@ int main(void)
+     if (!(s > data_eddsa_asc_len && s < LONG_MAX / 2))
+ 	return 1;
+ 
+-    uint8_t *addr = mmap(NULL, 2 * s, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
++    uint8_t *addr = mmap(NULL, 2 * s, PROT_READ | PROT_WRITE, 0 | MAP_PRIVATE, -1, 0);
+     if (addr == MAP_FAILED) {
+ 	perror("mmap");
+ 	return 1;
+diff --git a/tests/setup.sh b/tests/setup.sh
+index cec2d18..398df87 100755
+--- a/tests/setup.sh
++++ b/tests/setup.sh
+@@ -19,14 +19,14 @@ cp /data/macros.testenv @CMAKE_INSTALL_FULL_SYSCONFDIR@/rpm/
+ rpmdb --initdb
+ 
+ # set up new-style XDG config directory
+-rpmhome=/root/.config/rpm
+-mkdir -p ${rpmhome}
++#rpmhome=/root/.config/rpm
++#mkdir -p ${rpmhome}
+ 
+ # gpg-connect-agent is very, very unhappy if this doesn't exist
+-mkdir -p /root/.gnupg
+-chmod 700 /root/.gnupg
++#mkdir -p /root/.gnupg
++#chmod 700 /root/.gnupg
+ 
+ # setup default signing id + key (USER is not set when this runs!)
+-rpmconf=$(rpm --eval "%{_rpmconfigdir}")
+-USER=root ${rpmconf}/rpm-setup-autosign -p sq
+-rpmkeys --import /root/.config/rpm/*.asc
++#rpmconf=$(rpm --eval "%{_rpmconfigdir}")
++#USER=root ${rpmconf}/rpm-setup-autosign -p sq
++#rpmkeys --import /root/.config/rpm/*.asc
