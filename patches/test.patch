@@ -1,18 +1,74 @@
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 5def091..30c7e1d 100644
+index 5def091..71a9f32 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
-@@ -102,8 +102,8 @@ if (MKTREE_BACKEND STREQUAL oci)
+@@ -83,8 +83,9 @@ if (MKTREE_BACKEND STREQUAL oci)
+ 	find_program(PODMAN podman)
+ 	find_program(DOCKER docker)
+ 	mark_as_advanced(PODMAN DOCKER)
+-	os_release(OS_NAME ID)
+-	os_release(OS_VERSION VERSION_ID)
++	#os_release(OS_NAME ID)
++	#os_release(OS_VERSION VERSION_ID)
++	set(OS_NAME "zos")
+ 	set(DOCKERFILE ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile.${OS_NAME})
+ 	if (PODMAN AND EXISTS ${DOCKERFILE})
+ 		set(MKTREE_NATIVE yes)
+@@ -102,8 +103,8 @@ if (MKTREE_BACKEND STREQUAL oci)
  	find_program(PODMAN NAMES podman docker REQUIRED)
  elseif (MKTREE_BACKEND STREQUAL rootfs)
  	set(MKTREE_NATIVE yes)
 -	find_program(BWRAP bwrap REQUIRED)
 -	mark_as_advanced(BWRAP)
-+  #find_program(BWRAP bwrap REQUIRED)
-+  #mark_as_advanced(BWRAP)
++	#find_program(BWRAP bwrap REQUIRED)
++	#mark_as_advanced(BWRAP)
  endif()
  message(STATUS "Using mktree backend: ${MKTREE_BACKEND} "
  	       "(native: ${MKTREE_NATIVE})")
+diff --git a/tests/Dockerfile b/tests/Dockerfile
+index 81137a2..3f00cb1 120000
+--- a/tests/Dockerfile
++++ b/tests/Dockerfile
+@@ -1 +1 @@
+-Dockerfile.fedora
+\ No newline at end of file
++Dockerfile.zos
+\ No newline at end of file
+diff --git a/tests/Dockerfile.zos b/tests/Dockerfile.zos
+new file mode 100644
+index 0000000..279a4d6
+--- /dev/null
++++ b/tests/Dockerfile.zos
+@@ -0,0 +1,29 @@
++FROM ghcr.io/zopencommunity/zopen_base:1.1 AS base
++MAINTAINER zopencommunity
++
++ENV PATH=/usr/local/bin:$PATH
++
++WORKDIR /
++RUN . ~/.bashrc && zopen install bash coreutils zstd unzip git gawk patch grep sed file xz tar \
++    grep cpio libgpgerror zstd popt readline lua pkgconfig cmake zlib unzip libarchive \
++    scdoc libgcrypt openssl sqlite bzip2 gzip xz gettext make autoconf automake libtool \
++    perl m4 tar libiconv gpg doxygen lz4 zoslib -y
++
++CMD /usr/lpp/IBM/foz/v1r1/bin/bash
++
++FROM base AS full
++
++ENV PATH=/usr/local/bin:/usr/bin/:$PATH
++ENV TMPDIR=/srv/tmp
++
++WORKDIR /srv/
++RUN mkdir -p /srv/tmp/
++COPY buildenv_test .
++
++WORKDIR /srv/rpm-6.0.0
++COPY rpm-6.0.0/ .
++
++WORKDIR /srv/
++
++RUN . ~/.bashrc && zopen build -e buildenv_test
++RUN rm -rf /srv/{rpm-6.0.0,build,log*,install,tmp}
 diff --git a/tests/atlocal.in b/tests/atlocal.in
 index fb69213..23565b0 100644
 --- a/tests/atlocal.in
@@ -38,10 +94,10 @@ index fb69213..23565b0 100644
          shell)
              local source=$(findmnt -no SOURCE --mountpoint $RPMTEST)
 diff --git a/tests/mktree.common b/tests/mktree.common
-index 7a6de3d..a2f9d0e 100644
+index 7a6de3d..66f57fe 100644
 --- a/tests/mktree.common
 +++ b/tests/mktree.common
-@@ -1,14 +1,14 @@
+@@ -1,26 +1,26 @@
  # Build and install RPM and the test-suite data into a directory
  make_install()
  {
@@ -56,14 +112,19 @@ index 7a6de3d..a2f9d0e 100644
 -    ldconfig -r $DESTDIR @CMAKE_INSTALL_FULL_LIBDIR@
 +    #ldconfig -r $DESTDIR @CMAKE_INSTALL_FULL_LIBDIR@
  
-     cp -r @CMAKE_CURRENT_SOURCE_DIR@/data $DESTDIR/
-     cp -r @CMAKE_CURRENT_SOURCE_DIR@/pinned $DESTDIR/
-@@ -16,11 +16,12 @@ make_install()
-     mkdir -p $DESTDIR/usr/bin
-     cp @TESTPROG_NAMES@ $DESTDIR/usr/bin/
-     cp @CMAKE_CURRENT_SOURCE_DIR@/prpm.py $DESTDIR/usr/bin/
-+    rm /usr/bin/rpmtests
-     ln -s $script_dir/rpmtests.sh $DESTDIR/usr/bin/rpmtests
+-    cp -r @CMAKE_CURRENT_SOURCE_DIR@/data $DESTDIR/
+-    cp -r @CMAKE_CURRENT_SOURCE_DIR@/pinned $DESTDIR/
++    cp -r @CMAKE_CURRENT_SOURCE_DIR@/data /
++    cp -r @CMAKE_CURRENT_SOURCE_DIR@/pinned /
+ 
+-    mkdir -p $DESTDIR/usr/bin
+-    cp @TESTPROG_NAMES@ $DESTDIR/usr/bin/
+-    cp @CMAKE_CURRENT_SOURCE_DIR@/prpm.py $DESTDIR/usr/bin/
+-    ln -s $script_dir/rpmtests.sh $DESTDIR/usr/bin/rpmtests
++    mkdir -p /usr/bin
++    cp @TESTPROG_NAMES@ /usr/bin/
++    cp @CMAKE_CURRENT_SOURCE_DIR@/prpm.py /usr/bin/
++    ln -sf $script_dir/rpmtests.sh /usr/bin/rpmtests
  
 -    mkdir -p $DESTDIR/$script_dir
 -    cp rpmtests atlocal mktree.common setup.sh $DESTDIR/$script_dir/
@@ -75,16 +136,75 @@ index 7a6de3d..a2f9d0e 100644
 -    touch $DESTDIR/.rpmtestsuite
 +    touch /.rpmtestsuite
  }
+diff --git a/tests/mktree.oci b/tests/mktree.oci
+index b9775bf..8345afa 100755
+--- a/tests/mktree.oci
++++ b/tests/mktree.oci
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/bin/env bash
+ #
+ # OCI-based mktree backend
+ 
+@@ -16,11 +16,11 @@ else
+     CMAKE=no
+     NATIVE=no
+     PODMAN=${MKTREE_ENGINE:-podman}
+-    CONTEXT=..
++    CONTEXT=../..
+ fi
+ 
+ if [ $NATIVE == yes ]; then
+-    FROM="--from @OS_NAME@:@OS_VERSION@"
++    FROM="--from ghcr.io/zopencommunity/zopen_base:latest"
+ else
+     FROM=
+ fi
+@@ -30,12 +30,12 @@ CACHE_DIR="mktree.cache"
+ IID_FILE="$CACHE_DIR/image-id"
+ IMAGE_ID=$(cat $IID_FILE 2>/dev/null || echo "")
+ BASE_TAG="rpm/base:$(sha256sum Dockerfile | head -c8)"
+-ARGS="-f Dockerfile $FROM $CONTEXT"
++ARGS="--ulimit nofile=512 -f Dockerfile $FROM $CONTEXT"
+ ROOTLESS=$([ $(id -u) == 0 ] && echo 0 || echo 1)
+ CMD=$1; shift
+ 
+ export ROOTLESS
+-source mktree.common
++. mktree.common
+ 
+ mkdir -p $CACHE_DIR
+ 
+@@ -56,9 +56,9 @@ rpmtests()
+         vol=/srv
+     fi
+ 
+-    $PODMAN run --privileged -it --rm --read-only --tmpfs /tmp -v $vol \
++    $PODMAN run -it --rm --read-only --tmpfs /srv/tmp -e TMPDIR=/srv/tmp -v $vol \
+                 --workdir /srv -e ROOTLESS=$ROOTLESS $opts $IMAGE_ID \
+-                rpmtests "$@"
++                bash -lc ". ~/.bashrc && rpmtests $@"
+ }
+ 
+ clean()
 diff --git a/tests/mktree.rootfs b/tests/mktree.rootfs
-index 4357c28..a3e0c6e 100755
+index 4357c28..5436dd1 100755
 --- a/tests/mktree.rootfs
 +++ b/tests/mktree.rootfs
-@@ -13,8 +13,8 @@ CMD=$1; shift
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/bin/env bash
+ #
+ # Rootfs mktree backend for use in throwaway build containers.
+ # Installs RPM into / and runs the test-suite against the same.
+@@ -12,9 +12,9 @@ set -e
+ CMD=$1; shift
  case $CMD in
      build)
-         source ./mktree.common
+-        source ./mktree.common
 -        make_install /
 -        ./setup.sh /
++        . ./mktree.common
 +        make_install ""
 +        ./setup.sh ""
      ;;
@@ -103,11 +223,36 @@ index baae2a1..74ab9e4 100644
      if (addr == MAP_FAILED) {
  	perror("mmap");
  	return 1;
+diff --git a/tests/rpmtests.sh b/tests/rpmtests.sh
+index a2cefe2..4e02292 100755
+--- a/tests/rpmtests.sh
++++ b/tests/rpmtests.sh
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/bin/env bash
+ #
+ # Wrapper around rpmtests that adds a couple of useful options/overrides:
+ #   -C, --directory DIR
 diff --git a/tests/setup.sh b/tests/setup.sh
-index cec2d18..398df87 100755
+index cec2d18..9e3509f 100755
 --- a/tests/setup.sh
 +++ b/tests/setup.sh
-@@ -19,14 +19,14 @@ cp /data/macros.testenv @CMAKE_INSTALL_FULL_SYSCONFDIR@/rpm/
+@@ -1,4 +1,6 @@
+-#!/bin/bash
++#!/bin/env bash
++
++export PATH=/usr/local/bin/:$PATH
+ 
+ # Setup the environment in the test-image.
+ # Runs INSIDE the image, with our newly built rpm in the path.
+@@ -13,20 +15,20 @@ mkdir -p /build
+ ln -sf ../data/SOURCES /build/
+ 
+ # system-wide config to match our test environment
+-cp /data/macros.testenv @CMAKE_INSTALL_FULL_SYSCONFDIR@/rpm/
++cp /data/macros.testenv /usr/local/etc/rpm/
+ 
+ # setup an empty db that all tests are pointed to by default
  rpmdb --initdb
  
  # set up new-style XDG config directory
