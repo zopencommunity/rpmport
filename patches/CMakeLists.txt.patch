@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index af9c5da..0cd2341 100644
+index 30ed034..9bc4368 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -78,7 +78,6 @@ function(findutil UTIL TRY)
@@ -71,7 +71,31 @@ index af9c5da..0cd2341 100644
  check_symbol_exists(GLOB_ONLYDIR "glob.h" HAVE_GLOB_ONLYDIR)
  check_symbol_exists(major "sys/sysmacros.h" MAJOR_IN_SYSMACROS)
  if (NOT MAJOR_IN_SYSMACROS)
-@@ -553,7 +568,7 @@ install(FILES
+@@ -479,8 +494,21 @@ foreach(f macros rpmrc rpmpopt-${PROJECT_VERSION})
+ 	install(FILES ${CMAKE_BINARY_DIR}/${f} DESTINATION ${RPM_CONFIGDIR})
+ endforeach()
+ 
+-if (ENABLE_TESTSUITE)
+-	add_subdirectory(tests)
++# Find required programs for tests
++find_program(PODMAN NAMES podman docker)
++find_program(AUTOM4TE autom4te)
++
++if(ENABLE_TESTSUITE)
++    if(NOT PODMAN)
++        message(STATUS "Podman or Docker not found. Test suite will not be enabled.")
++    endif()
++    if(NOT AUTOM4TE)
++        message(STATUS "autom4te not found. Test suite will not be enabled.")
++    endif()
++endif()
++
++if(ENABLE_TESTSUITE AND PODMAN AND AUTOM4TE)
++    add_subdirectory(tests)
+ endif()
+ 
+ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rpm.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+@@ -553,7 +581,7 @@ install(FILES
  	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rpm
  )
  
