@@ -1,5 +1,5 @@
 # bump: rpm-version /RPM_VERSION="(.*)"/ gitrefs:https://github.com/rpm-software-management/rpm.git|re:/rpm-([\d.]+)-release/$1/|*
-RPM_VERSION="6.0.0"
+RPM_VERSION="6.0.1"
 
 export ZOPEN_BUILD_LINE="STABLE"
 
