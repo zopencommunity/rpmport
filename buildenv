@@ -4,13 +4,13 @@ RPM_VERSION="6.0.0"
 export ZOPEN_BUILD_LINE="STABLE"
 
 export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm/releases/download/rpm-${RPM_VERSION}-release/rpm-${RPM_VERSION}.tar.bz2"  # Specify the stable build URL (either git or tarball)
-export ZOPEN_STABLE_DEPS="bash coreutils zstd unzip git gawk patch grep sed file xz tar grep cpio libgpgerror zstd popt readline lua pkgconfig cmake zlib unzip libarchive scdoc libgcrypt openssl sqlite bzip2 gzip xz gettext make autoconf automake libtool perl m4 tar libiconv gpg doxygen lz4" # Specify the stable build dependencies.
+export ZOPEN_STABLE_DEPS="bash coreutils zstd unzip git gawk patch grep sed file xz tar grep cpio libgpgerror zstd popt readline lua pkgconfig cmake zlib unzip libarchive scdoc libgcrypt openssl sqlite bzip2 gzip xz gettext make autoconf automake libtool perl m4 tar libiconv gpg doxygen lz4 check_podman" # Specify the stable build dependencies.
 
 ## Required IF ZOPEN_BUILD_LINE='DEV'
 export ZOPEN_DEV_URL="https://github.com/rpm-software-management/rpm.git"   # Specify the dev build URL
 
 export ZOPEN_EXTRA_CFLAGS="-D_POSIX_C_SOURCE=200809L" 
-export ZOPEN_EXTRA_CPPFLAGS="-D_POSIX_C_SOURCE=200809L -D__XPLAT=1"  
+export ZOPEN_EXTRA_CPPFLAGS="-D_POSIX_C_SOURCE=200809L -D__XPLAT=1"
 export ZOPEN_SYSTEM_PREREQS="zos25"
 
 export ZOPEN_CATEGORIES="core utilities"
@@ -44,9 +44,10 @@ zopen_get_version()
 }
 
 
-export ZOPEN_CONFIGURE_OPTS="-B ../build --install-prefix \$ZOPEN_INSTALL_DIR/ -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DZLIB_LIBRARY=\"\$ZLIB_HOME/lib/libz.a\" -DZLIB_INCLUDE_DIR=\"\$ZLIB_HOME/include\" -DLUA_DIR=\"\$LUA_HOME\" -DLUA_LIBRARIES=\"\$LUA_HOME/lib/liblua.a\" -DLUA_INCLUDE_DIR=\$LUA_HOME/include -DBZIP2_INCLUDE_DIR=\$BZIP2_HOME/include -DBZIP2_LIBRARIES=\$BZIP2_HOME/lib/libbz2.a -DLIBARCHIVE_DIR=\$LIBARCHIVE_HOME -DLIBARCHIVE_INCLUDE_DIR=\$LIBARCHIVE_HOME/include -DLIBARCHIVE_LIBRARY=\$LIBARCHIVE_HOME/lib/libarchive.a -DMAGIC_LIBRARY=\$FILE_HOME/lib/libmagic.a -DMAGIC_INCLUDE_DIR=\$FILE_HOME/include -DIntl_LIBRARY=\$GETTEXT_HOME/lib/libintl.a -DIntl_INCLUDE_DIR=\$GETTEXT_HOME/include/libintl.h -DWITH_READLINE=OFF -DWITH_LIBELF=OFF -DWITH_LIBDW=OFF -DWITH_LIBLZMA=OFF -DENABLE_OPENMP=OFF -DWITH_CAP=OFF -DWITH_ACL=OFF -DENABLE_PLUGINS=OFF -DWITH_AUDIT=OFF -DWITH_SELINUX=OFF -DWITH_SEQUOIA=OFF -DWITH_DBUS=OFF -DZSTD_INCLUDE_DIR=\"\${ZSTD_HOME}/include\" -DZSTD_LIBRARY=\"\${ZSTD_HOME}/lib\" -DHAVE_UNSHARE=OFF -DENABLE_PYTHON=OFF -DENABLE_CUTF8=OFF -DRPM_VENDOR=ibm -DIconv_INCLUDE_DIR=\$LIBICONV_HOME/include -DIconv_LIBRARY=\$LIBICONV_HOME/lib/libiconv.a"
+export ZOPEN_CONFIGURE_OPTS="-B ../build --install-prefix \$ZOPEN_INSTALL_DIR/ -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DZLIB_LIBRARY=\"\$ZLIB_HOME/lib/libz.a\" -DZLIB_INCLUDE_DIR=\"\$ZLIB_HOME/include\" -DLUA_LIBRARIES=\"\$LUA_HOME/lib/liblua.a\" -DLUA_INCLUDE_DIR=\$LUA_HOME/include -DBZIP2_INCLUDE_DIR=\$BZIP2_HOME/include -DBZIP2_LIBRARIES=\$BZIP2_HOME/lib/libbz2.a -DLIBARCHIVE_DIR=\$LIBARCHIVE_HOME -DMAGIC_LIBRARY=\$FILE_HOME/lib/libmagic.a -DMAGIC_INCLUDE_DIR=\$FILE_HOME/include -DIntl_LIBRARY=\$GETTEXT_HOME/lib/libintl.a -DIntl_INCLUDE_DIR=\$GETTEXT_HOME/include/libintl.h -DWITH_READLINE=OFF -DWITH_LIBELF=OFF -DWITH_LIBDW=OFF -DWITH_LIBLZMA=OFF -DENABLE_OPENMP=OFF -DWITH_CAP=OFF -DWITH_ACL=OFF -DENABLE_PLUGINS=OFF -DWITH_AUDIT=OFF -DWITH_SELINUX=OFF -DWITH_SEQUOIA=OFF -DWITH_DBUS=OFF -DHAVE_UNSHARE=OFF -DENABLE_PYTHON=OFF -DENABLE_CUTF8=OFF -DRPM_VENDOR=ibm -DIconv_INCLUDE_DIR=\$LIBICONV_HOME/include -DIconv_LIBRARY=\$LIBICONV_HOME/lib/libiconv.a -DENABLE_TESTSUITE=ON"
 export ZOPEN_MAKE_OPTS="-C ../build"
 export ZOPEN_INSTALL_OPTS="-C ../build install"
+export ZOPEN_CHECK_OPTS="-C ../build ci"
 
 zopen_append_to_env() {
 cat <<ZZ
