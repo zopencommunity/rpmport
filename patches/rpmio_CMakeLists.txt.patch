@@ -1,8 +1,8 @@
 diff --git a/rpmio/CMakeLists.txt b/rpmio/CMakeLists.txt
-index 65d22f6..e31c206 100644
+index 397ec13..5535bcd 100644
 --- a/rpmio/CMakeLists.txt
 +++ b/rpmio/CMakeLists.txt
-@@ -1,14 +1,14 @@
+@@ -1,6 +1,6 @@
 -add_library(librpmio SHARED)
 +add_library(rpmio STATIC)
  
@@ -11,17 +11,18 @@ index 65d22f6..e31c206 100644
  	argv.cc base64.cc digest.cc expression.cc macro.cc rpmhook.hh rpmhook.cc
  	rpmio.cc rpmlog.cc rpmmalloc.cc rgetopt.cc rpmpgp.cc rpmpgpval.hh
  	rpmsq.cc rpmsw.cc url.cc rpmio_internal.hh rpmvercmp.cc
- 	rpmver.cc rpmstring.cc rpmfileutil.cc rpmglob.cc rpmkeyring.cc
+@@ -8,8 +8,8 @@ target_sources(librpmio PRIVATE
  	rpmstrpool.cc rpmmacro_internal.hh rpmlua.cc rpmlua.hh lposix.cc
+ 	progname.cc
  )
 -target_compile_definitions(librpmio PRIVATE RPM_CONFIGDIR="${RPM_CONFIGDIR}")
 -target_include_directories(librpmio 
 +target_compile_definitions(rpmio PRIVATE RPM_CONFIGDIR="${RPM_CONFIGDIR}")
-+target_include_directories(rpmio 
++target_include_directories(rpmio
      PRIVATE
  	${CMAKE_CURRENT_SOURCE_DIR}
  	${Intl_INCLUDE_DIRS}
-@@ -23,30 +23,30 @@ endif()
+@@ -24,30 +24,30 @@ endif()
  
  if (WITH_SEQUOIA)
  	pkg_check_modules(RPMSEQUOIA REQUIRED IMPORTED_TARGET rpm-sequoia>=1.9.0)
@@ -62,7 +63,7 @@ index 65d22f6..e31c206 100644
  	PkgConfig::POPT
  	LUA::LUA
  	ZLIB::ZLIB
-@@ -54,16 +54,19 @@ target_link_libraries(librpmio PRIVATE
+@@ -55,16 +55,19 @@ target_link_libraries(librpmio PRIVATE
  )
  
  if (ZSTD_FOUND)

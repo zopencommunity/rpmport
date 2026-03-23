@@ -1,0 +1,17 @@
+diff --git a/rpmio/progname.cc b/rpmio/progname.cc
+index eb4f0c4..26bfb67 100644
+--- a/rpmio/progname.cc
++++ b/rpmio/progname.cc
+@@ -2,7 +2,11 @@
+ 
+ #include <rpm/rpmutil.h>
+ 
+-#if defined(HAVE_SETPROGNAME) /* BSD'ish systems */
++#if defined(__MVS__)
++#define setprogname(pn) ((void)0)
++#endif
++
++#if defined(HAVE_SETPROGNAME) || defined(__MVS__) /* BSD'ish systems */
+ #include <stdlib.h>
+ #elif defined(HAVE___PROGNAME) /* glibc and others */
+ extern const char *__progname;

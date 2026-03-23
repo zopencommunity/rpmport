@@ -3,7 +3,8 @@ RPM_VERSION="6.0.1"
 
 export ZOPEN_BUILD_LINE="STABLE"
 
-export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm/releases/download/rpm-${RPM_VERSION}-release/rpm-${RPM_VERSION}.tar.bz2"  # Specify the stable build URL (either git or tarball)
+export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm.git"  # Specify the stable build URL (either git or tarball)
+export ZOPEN_STABLE_TAG="rpm-${RPM_VERSION}-release"  # Specify the git tag for stable builds
 export ZOPEN_STABLE_DEPS="bash coreutils zstd unzip git gawk patch grep sed file xz tar grep cpio libgpgerror zstd popt readline lua pkgconfig cmake zlib unzip libarchive scdoc libgcrypt openssl sqlite bzip2 gzip xz gettext make autoconf automake libtool perl m4 tar libiconv gpg doxygen lz4" # Specify the stable build dependencies.
 
 ## Required IF ZOPEN_BUILD_LINE='DEV'
@@ -22,6 +23,8 @@ export ZOPEN_BOOTSTRAP="skip"  ## Bootstrap program to run (defaults to './boots
 export ZOPEN_CONFIGURE="cmake" ## Configuration program to run (defaults to './configure')
 
 export ZOPEN_RUNTIME_DEPS="file sed coreutils diffutils findutils grep bash gawk bzip2 gzip xz lzip patch tar unzip zstd git quilt make"
+export ZOPEN_NAME="rpm-${RPM_VERSION}"
+
 
 zopen_check_results()
 {
