@@ -1,5 +1,5 @@
 diff --git a/include/rpm/rpmtypes.h b/include/rpm/rpmtypes.h
-index e5ac7a3..09f637a 100644
+index e5ac7a3..9ce157e 100644
 --- a/include/rpm/rpmtypes.h
 +++ b/include/rpm/rpmtypes.h
 @@ -9,6 +9,7 @@
@@ -19,7 +19,7 @@ index e5ac7a3..09f637a 100644
  typedef uint16_t	rpm_rdev_t;
  typedef uint32_t	rpm_dev_t;
  typedef uint32_t	rpm_ino_t;
-@@ -110,6 +111,73 @@ typedef	enum rpmRC_e {
+@@ -110,6 +111,71 @@ typedef	enum rpmRC_e {
      RPMRC_NOKEY		= 4	/*!< Public key is unavailable. */
  } rpmRC;
  
@@ -74,18 +74,16 @@ index e5ac7a3..09f637a 100644
 +{
 +    unsigned int outmode = (unsigned int)(inmode & 0777); /* keep permission bits */
 +
-+    unsigned int type = inmode & LINUX_S_IFMT;
-+
-+      /* Map Linux file type bits to z/OS equivalents */
-+     if ((inmode & LINUX_S_IFMT) == LINUX_S_IFIFO)       outmode |= ZOS_S_IFIFO;
++    /* Map Linux file type bits to z/OS equivalents */
++    if ((inmode & LINUX_S_IFMT) == LINUX_S_IFIFO)       outmode |= ZOS_S_IFIFO;
 +    else if ((inmode & LINUX_S_IFMT) == LINUX_S_IFCHR)  outmode |= ZOS_S_IFCHR;
 +    else if ((inmode & LINUX_S_IFMT) == LINUX_S_IFDIR)  outmode |= ZOS_S_IFDIR;
-+   else if ((inmode & LINUX_S_IFMT) == LINUX_S_IFBLK)  outmode |= ZOS_S_IFBLK;
++    else if ((inmode & LINUX_S_IFMT) == LINUX_S_IFBLK)  outmode |= ZOS_S_IFBLK;
 +    else if ((inmode & LINUX_S_IFMT) == LINUX_S_IFREG)  outmode |= ZOS_S_IFREG;
-+   else if ((inmode & LINUX_S_IFMT) == LINUX_S_IFLNK)  outmode |= ZOS_S_IFLNK;
++    else if ((inmode & LINUX_S_IFMT) == LINUX_S_IFLNK)  outmode |= ZOS_S_IFLNK;
 +    else if ((inmode & LINUX_S_IFMT) == LINUX_S_IFSOCK) outmode |= ZOS_S_IFSOCK;
 +
-+       return outmode;
++    return outmode;
 +}
 +
 +#endif /* __MVS__ */
