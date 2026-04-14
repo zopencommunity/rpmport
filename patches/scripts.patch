@@ -11,7 +11,7 @@ index 0e6e58f..a45f292 100755
  
  done
 diff --git a/scripts/brp-strip b/scripts/brp-strip
-index 76b360b..bc4fd7e 100755
+index 76b360b..47840b6 100755
 --- a/scripts/brp-strip
 +++ b/scripts/brp-strip
 @@ -1,4 +1,4 @@
@@ -20,6 +20,41 @@ index 76b360b..bc4fd7e 100755
  
  # If using normal root, avoid changing anything.
  if [ -z "$RPM_BUILD_ROOT" ] || [ "$RPM_BUILD_ROOT" = "/" ]; then
+@@ -14,7 +14,7 @@ NCPUS=${RPM_BUILD_NCPUS:-1}
+ MAX_ARGS=32
+ 
+ case `uname -a` in
+-Darwin*) exit 0 ;;
++Darwin|OS/390*) exit 0 ;;
+ *) ;;
+ esac
+ 
+diff --git a/scripts/brp-strip-comment-note b/scripts/brp-strip-comment-note
+index 982b6c0..c40d8e3 100755
+--- a/scripts/brp-strip-comment-note
++++ b/scripts/brp-strip-comment-note
+@@ -9,7 +9,7 @@ OBJDUMP=${2:-objdump}
+ NCPUS=${RPM_BUILD_NCPUS:-1}
+ 
+ case `uname -a` in
+-Darwin*) exit 0 ;;
++Darwin*|OS/390*) exit 0 ;;
+ *) ;;
+ esac
+ 
+diff --git a/scripts/brp-strip-static-archive b/scripts/brp-strip-static-archive
+index be869fa..5386793 100755
+--- a/scripts/brp-strip-static-archive
++++ b/scripts/brp-strip-static-archive
+@@ -8,7 +8,7 @@ STRIP=${1:-strip}
+ NCPUS=${RPM_BUILD_NCPUS:-1}
+ 
+ case `uname -a` in
+-Darwin*) exit 0 ;;
++Darwin|OS/390*) exit 0 ;;
+ *) ;;
+ esac
+ 
 diff --git a/scripts/check-files b/scripts/check-files
 index 12bacfb..f0cc8c9 100755
 --- a/scripts/check-files

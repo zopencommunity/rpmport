@@ -5,7 +5,7 @@ export ZOPEN_BUILD_LINE="STABLE"
 
 export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm.git"  # Specify the stable build URL (either git or tarball)
 export ZOPEN_STABLE_TAG="rpm-${RPM_VERSION}-release"  # Specify the git tag for stable builds
-export ZOPEN_STABLE_DEPS="cmake make pkgconfig popt lua zlib file libarchive scdoc sqlite libgcrypt bzip2 xz zstd lz4 gettext libiconv" # Specify the stable build dependencies.
+export ZOPEN_STABLE_DEPS="cmake make pkgconfig popt lua zlib file libarchive scdoc sqlite libgcrypt bzip2 xz zstd lz4 gettext libiconv coreutils grep gzip patch quilt tar gawk quilt unzip" # Specify the stable build dependencies.
 
 ## Required IF ZOPEN_BUILD_LINE='DEV'
 export ZOPEN_DEV_URL="https://github.com/rpm-software-management/rpm.git"   # Specify the dev build URL
