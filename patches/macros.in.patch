@@ -1,8 +1,17 @@
 diff --git a/macros.in b/macros.in
-index 47caca5..87fd624 100644
+index da3a6bc..517056c 100644
 --- a/macros.in
 +++ b/macros.in
-@@ -636,7 +636,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+@@ -371,7 +371,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+ #	See rpm-payloadflags(7).
+ #
+ #%_source_payload	w9.gzdio
+-%_binary_payload	%[ %_rpmformat >=6 ? "w19.zstdio" : "w9.gzdio" ]
++%_binary_payload	%[ %_rpmformat >=6 ? "w3.zstdio" : "w9.gzdio" ]
+ 
+ #	Algorithm to use for generating file checksum digests on build.
+ #	If not specified or 0, MD5 is used.
+@@ -640,7 +640,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
  #	binary packages, as described by rpm-queryformat(7). Percent signs need
  #	to be escaped.
  #
@@ -11,7 +20,7 @@ index 47caca5..87fd624 100644
  
  #	Verify digest/signature flags for various rpm modes:
  #	0x30300 (RPMVSF_MASK_NODIGESTS)    --nohdrchk      if set, don't check digest(s)
-@@ -676,7 +676,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+@@ -680,7 +680,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
  # signature	require valid signature(s)
  # digest	require valid digest(s)
  # none		traditional rpm behavior, nothing required
@@ -20,7 +29,7 @@ index 47caca5..87fd624 100644
  
  # Disabler flags for package verification (similar to vsflags)
  # Set to 0x0 for full compatibility with v4 packages.
-@@ -1339,55 +1339,4 @@ end
+@@ -1348,55 +1348,4 @@ end
  # arguments, eg `%add_sysuser g mygroup 515`.
  # -b option omits the "Provides: " and the "Requires:" lines for group
  # membership to support formatting the entry outside spec context.
