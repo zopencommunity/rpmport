@@ -1,12 +1,10 @@
 diff --git a/lib/CMakeLists.txt b/lib/CMakeLists.txt
-index 3674d0b..ad24809 100644
+index 3674d0b..8951aad 100644
 --- a/lib/CMakeLists.txt
 +++ b/lib/CMakeLists.txt
-@@ -1,4 +1,6 @@
+@@ -1,4 +1,4 @@
 -add_library(librpm SHARED)
 +add_library(librpm STATIC)
-+target_link_libraries(librpm PRIVATE rpmio misc)
-+
  set_target_properties(librpm PROPERTIES
  	VERSION ${RPM_LIBVERSION}
  	SOVERSION ${RPM_SOVERSION}

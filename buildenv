@@ -5,7 +5,7 @@ export ZOPEN_BUILD_LINE="STABLE"
 
 export ZOPEN_STABLE_URL="https://github.com/rpm-software-management/rpm.git"  # Specify the stable build URL (either git or tarball)
 export ZOPEN_STABLE_TAG="rpm-${RPM_VERSION}-release"  # Specify the git tag for stable builds
-export ZOPEN_STABLE_DEPS="cmake make pkgconfig popt lua zlib file libarchive scdoc sqlite libgcrypt bzip2 xz zstd lz4 gettext libiconv" # Specify the stable build dependencies.
+export ZOPEN_STABLE_DEPS="cmake make pkgconfig popt lua zlib file libarchive scdoc sqlite libgcrypt bzip2 xz zstd lz4 gettext libiconv coreutils grep gzip patch quilt tar gawk quilt unzip" # Specify the stable build dependencies.
 
 ## Required IF ZOPEN_BUILD_LINE='DEV'
 export ZOPEN_DEV_URL="https://github.com/rpm-software-management/rpm.git"   # Specify the dev build URL
@@ -24,7 +24,6 @@ export ZOPEN_CONFIGURE="cmake" ## Configuration program to run (defaults to './c
 
 export ZOPEN_RUNTIME_DEPS="file sed coreutils diffutils findutils grep bash gawk bzip2 gzip xz lzip patch tar unzip zstd git quilt make"
 export ZOPEN_NAME="rpm-${RPM_VERSION}"
-
 
 zopen_check_results()
 {
@@ -47,7 +46,8 @@ zopen_get_version()
 }
 
 
-export ZOPEN_CONFIGURE_OPTS="-B ../build --install-prefix \$ZOPEN_INSTALL_DIR/ -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DZLIB_LIBRARY=\"\$ZLIB_HOME/lib/libz.a\" -DZLIB_INCLUDE_DIR=\"\$ZLIB_HOME/include\" -DLUA_LIBRARIES=\"\$LUA_HOME/lib/liblua.a\" -DLUA_INCLUDE_DIR=\$LUA_HOME/include -DBZIP2_INCLUDE_DIR=\$BZIP2_HOME/include -DBZIP2_LIBRARIES=\$BZIP2_HOME/lib/libbz2.a -DMAGIC_LIBRARY=\$FILE_HOME/lib/libmagic.a -DMAGIC_INCLUDE_DIR=\$FILE_HOME/include -DIntl_LIBRARY=\$GETTEXT_HOME/lib/libintl.a -DIntl_INCLUDE_DIR=\$GETTEXT_HOME/include/libintl.h -DWITH_READLINE=OFF -DWITH_LIBELF=OFF -DWITH_LIBDW=OFF -DWITH_LIBLZMA=OFF -DENABLE_OPENMP=OFF -DWITH_CAP=OFF -DWITH_ACL=OFF -DENABLE_PLUGINS=OFF -DWITH_AUDIT=OFF -DWITH_SELINUX=OFF -DWITH_SEQUOIA=OFF -DWITH_DBUS=OFF -DHAVE_UNSHARE=OFF -DENABLE_PYTHON=OFF -DENABLE_CUTF8=OFF -DRPM_VENDOR=ibm -DIconv_INCLUDE_DIR=\$LIBICONV_HOME/include -DIconv_LIBRARY=\$LIBICONV_HOME/lib/libiconv.a"
+export ZOPEN_CONFIGURE_OPTS="-B ../build --install-prefix \$ZOPEN_INSTALL_DIR/ -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DWITH_READLINE=OFF -DWITH_LIBELF=OFF -DWITH_LIBDW=OFF -DWITH_LIBLZMA=OFF -DENABLE_OPENMP=OFF -DWITH_CAP=OFF -DWITH_ACL=OFF -DENABLE_PLUGINS=OFF -DWITH_AUDIT=OFF -DWITH_SELINUX=OFF -DWITH_SEQUOIA=OFF -DWITH_DBUS=OFF -DHAVE_UNSHARE=OFF -DENABLE_PYTHON=OFF -DENABLE_CUTF8=OFF -DRPM_VENDOR=ibm"
+
 export ZOPEN_MAKE_OPTS="-C ../build"
 export ZOPEN_INSTALL_OPTS="-C ../build install"
 
@@ -57,10 +57,25 @@ if [ ! -z "\$ZOPEN_IN_ZOPEN_BUILD" ]; then
   export ZOPEN_EXTRA_CFLAGS="\${ZOPEN_EXTRA_CFLAGS} -I\$PWD/include"
   export ZOPEN_EXTRA_CXXFLAGS="\${ZOPEN_EXTRA_CXXFLAGS} -I\$PWD/include"
   export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\$PWD/lib"
-  export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -llibrpm -llibrpmbuild -llibrpmsign -lrpmio"
+  export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lrpm -lrpmio"
   export CMAKE_PREFIX_PATH="\$PWD/:\${CMAKE_PREFIX_PATH}"
 fi
 ZZ
+}
+
+zopen_post_install() 
+{
+  prefix=$1
+  lib="$prefix/lib"
+  saved_pwd=$(pwd)
+
+  if [ -d "$lib" ]; then
+    cd "$lib" || return 1
+    ln -sf "liblibrpm.a"  "librpm.a"
+    ln -sf "liblibrpmio.a"  "librpmio.a"
+  fi
+
+  cd "$saved_pwd" || true
 }
 
 zopen_append_to_zoslib_env(){
