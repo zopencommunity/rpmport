@@ -57,10 +57,25 @@ if [ ! -z "\$ZOPEN_IN_ZOPEN_BUILD" ]; then
   export ZOPEN_EXTRA_CFLAGS="\${ZOPEN_EXTRA_CFLAGS} -I\$PWD/include"
   export ZOPEN_EXTRA_CXXFLAGS="\${ZOPEN_EXTRA_CXXFLAGS} -I\$PWD/include"
   export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\$PWD/lib"
-  export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -llibrpm -llibrpmbuild -llibrpmsign -lrpmio"
+  export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lrpm -lrpmio"
   export CMAKE_PREFIX_PATH="\$PWD/:\${CMAKE_PREFIX_PATH}"
 fi
 ZZ
+}
+
+zopen_post_install() 
+{
+  prefix=$1
+  lib="$prefix/lib"
+  saved_pwd=$(pwd)
+
+  if [ -d "$lib" ]; then
+    cd "$lib" || return 1
+    ln -sf "liblibrpm.a"  "librpm.a"
+    ln -sf "liblibrpmio.a"  "librpmio.a"
+  fi
+
+  cd "$saved_pwd" || true
 }
 
 zopen_append_to_zoslib_env(){
