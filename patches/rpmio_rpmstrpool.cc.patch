@@ -1,0 +1,24 @@
+diff --git a/rpmio/rpmstrpool.cc b/rpmio/rpmstrpool.cc
+index 7fd2430..3e6e6a9 100644
+--- a/rpmio/rpmstrpool.cc
++++ b/rpmio/rpmstrpool.cc
+@@ -238,7 +238,9 @@ static void rpmstrPoolRehash(rpmstrPool pool)
+ 
+ rpmstrPool rpmstrPoolCreate(void)
+ {
+-    rpmstrPool pool = (rpmstrPool)xcalloc(1, sizeof(*pool));
++    rpmstrPool pool = new (std::nothrow) rpmstrPool_s();
++    if (!pool)
++        return NULL;
+ 
+     pool->offs_alloced = STROFFS_CHUNK;
+     pool->offs = (const char **)xcalloc(pool->offs_alloced, sizeof(*pool->offs));
+@@ -268,7 +270,7 @@ rpmstrPool rpmstrPoolFree(rpmstrPool pool)
+ 	pool->chunks[i] = _free(pool->chunks[i]);
+     }
+     free(pool->chunks);
+-    free(pool);
++    delete pool;
+ 
+     return NULL;
+ }
