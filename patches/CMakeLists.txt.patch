@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7c1a9ff..a1ec931 100644
+index 5bb5db3..969f55f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -78,7 +78,6 @@ function(findutil UTIL TRY)

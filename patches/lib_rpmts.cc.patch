@@ -1,0 +1,13 @@
+diff --git a/lib/rpmts.cc b/lib/rpmts.cc
+index ebbdcaa..ff2be85 100644
+--- a/lib/rpmts.cc
++++ b/lib/rpmts.cc
+@@ -1078,7 +1078,7 @@ void rpmtsLockInit(rpmts ts)
+ 	const char *rootDir = rpmtsRootDir(ts);
+ 	char *t;
+ 
+-	if (!rootDir || rpmChrootDone())
++	if (!rootDir || (rpmChrootDone() && getuid() == 0))
+ 	    rootDir = "/";
+ 
+ 	t = rpmGenPath(rootDir, rpmlock_path_default, NULL);

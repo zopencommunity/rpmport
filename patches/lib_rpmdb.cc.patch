@@ -1,0 +1,13 @@
+diff --git a/lib/rpmdb.cc b/lib/rpmdb.cc
+index 419cb45..8b4612e 100644
+--- a/lib/rpmdb.cc
++++ b/lib/rpmdb.cc
+@@ -302,7 +302,7 @@ const char *rpmdbHome(rpmdb db)
+ {
+     const char *dbdir = NULL;
+     if (db) {
+-	dbdir = rpmChrootDone() ? db->db_home : db->db_fullpath;
++	dbdir = (rpmChrootDone() && getuid() == 0) ? db->db_home : db->db_fullpath;
+     }
+     return dbdir;
+ }

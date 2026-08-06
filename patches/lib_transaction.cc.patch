@@ -1,0 +1,32 @@
+diff --git a/lib/transaction.cc b/lib/transaction.cc
+index de7cdab..aa61fae 100644
+--- a/lib/transaction.cc
++++ b/lib/transaction.cc
+@@ -125,13 +125,24 @@ static diskspaceInfo *rpmtsCreateDSI(const rpmts ts, dev_t dev,
+     struct stat sb;
+     int rc;
+     struct statvfs sfb;
++    const char *rootDir = rpmtsRootDir(ts);
++    char *allocatedPath = NULL;
++    const char *queryPath = dirName;
++
++    if (rootDir && getuid() != 0) {
++	allocatedPath = rpmGenPath(rootDir, dirName, NULL);
++	queryPath = allocatedPath;
++    }
+ 
+     memset(&sfb, 0, sizeof(sfb));
+-    rc = statvfs(dirName, &sfb);
+-    if (rc)
++    rc = statvfs(queryPath, &sfb);
++    if (rc) {
++	free(allocatedPath);
+ 	return NULL;
++    }
+ 
+-    rc = stat(dirName, &sb);
++    rc = stat(queryPath, &sb);
++    free(allocatedPath);
+     if (rc)
+ 	return NULL;
+     if (sb.st_dev != dev)
