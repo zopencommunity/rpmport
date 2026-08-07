@@ -1,0 +1,16 @@
+diff --git a/lib/rpmchroot.hh b/lib/rpmchroot.hh
+index 0c2be6b..090e645 100644
+--- a/lib/rpmchroot.hh
++++ b/lib/rpmchroot.hh
+@@ -33,4 +33,11 @@ int rpmChrootOut(void);
+ RPM_GNUC_INTERNAL
+ int rpmChrootDone(void);
+ 
++/** \ingroup rpmchroot
++ * Return the path to the chroot directory.
++ * return		The chroot path, or NULL if not set
++ */
++RPM_GNUC_INTERNAL
++const char *rpmChrootPath(void);
++
+ #endif /* _RPMCHROOT_H */

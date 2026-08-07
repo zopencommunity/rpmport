@@ -1,5 +1,5 @@
 diff --git a/lib/fsm.cc b/lib/fsm.cc
-index 63580c2..e8a2c01 100644
+index 63580c2..f15e050 100644
 --- a/lib/fsm.cc
 +++ b/lib/fsm.cc
 @@ -4,6 +4,10 @@
@@ -13,7 +13,15 @@ index 63580c2..e8a2c01 100644
  
  #include <inttypes.h>
  #include <utime.h>
-@@ -58,6 +62,11 @@ struct filedata_s {
+@@ -24,6 +28,7 @@
+ #include "rpmfi_internal.hh" /* rpmfiSetOnChdir */
+ #include "rpmplugins.hh"	/* rpm plugins hooks */
+ #include "rpmug.hh"
++#include "rpmchroot.hh"
+ 
+ #include "debug.h"
+ 
+@@ -58,6 +63,11 @@ struct filedata_s {
      const char *suffix;
      char *fpath;
      struct stat sb;
@@ -25,7 +33,7 @@ index 63580c2..e8a2c01 100644
  };
  
  /* 
-@@ -167,7 +176,7 @@ static int fsmOpen(int *wfdp, int dirfd, const char *dest)
+@@ -167,7 +177,7 @@ static int fsmOpen(int *wfdp, int dirfd, const char *dest)
  {
      int rc = 0;
      /* Create the file with 0200 permissions (write by owner). */
@@ -34,7 +42,7 @@ index 63580c2..e8a2c01 100644
  
      if (fd < 0)
  	rc = RPMERR_OPEN_FAILED;
-@@ -293,7 +302,7 @@ static int fsmMkdir(int dirfd, const char *path, mode_t mode)
+@@ -293,7 +303,7 @@ static int fsmMkdir(int dirfd, const char *path, mode_t mode)
      int rc = mkdirat(dirfd, path, (mode & 07777));
      if (_fsm_debug)
  	rpmlog(RPMLOG_DEBUG, " %8s (%d %s, 0%04o) %s\n", __func__,
@@ -43,7 +51,7 @@ index 63580c2..e8a2c01 100644
  	       (rc < 0 ? strerror(errno) : ""));
      if (rc < 0)	rc = RPMERR_MKDIR_FAILED;
      return rc;
-@@ -302,8 +311,19 @@ static int fsmMkdir(int dirfd, const char *path, mode_t mode)
+@@ -302,8 +312,19 @@ static int fsmMkdir(int dirfd, const char *path, mode_t mode)
  static int fsmOpenat(int *wfdp, int dirfd, const char *path, int flags, int dir)
  {
      struct stat lsb, sb;
@@ -65,7 +73,7 @@ index 63580c2..e8a2c01 100644
      int rc = 0;
  
      /*
-@@ -360,11 +380,11 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
+@@ -360,11 +381,11 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
  	rc = fsmMkdir(dirfd, dn, mode);
  
      if (!rc) {
@@ -79,7 +87,7 @@ index 63580c2..e8a2c01 100644
      }
  
      /* Run fsm file post hook for all plugins */
-@@ -373,7 +393,7 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
+@@ -373,7 +394,7 @@ static int fsmDoMkDir(rpmPlugins plugins, int dirfd, const char *dn,
      if (!rc) {
  	rpmlog(RPMLOG_DEBUG,
  		"%s directory created with perms %04o\n",
@@ -88,7 +96,18 @@ index 63580c2..e8a2c01 100644
      }
  
      return rc;
-@@ -442,7 +462,7 @@ static int fsmMkfifo(int dirfd, const char *path, mode_t mode)
+@@ -390,7 +411,9 @@ static int ensureDir(rpmPlugins plugins, const char *p, int owned, int create,
+ 	return 0;
+ 
+     int dirfd = -1;
+-    int rc = fsmOpenat(&dirfd, -1, "/", oflags, 1);
++    const char *rootDir = rpmChrootPath();
++    const char *startPath = (rootDir && getuid() != 0) ? rootDir : "/";
++    int rc = fsmOpenat(&dirfd, -1, startPath, oflags, 1);
+     int fd = dirfd; /* special case of "/" */
+ 
+     char *path = xstrdup(p);
+@@ -442,7 +465,7 @@ static int fsmMkfifo(int dirfd, const char *path, mode_t mode)
  
      if (_fsm_debug) {
  	rpmlog(RPMLOG_DEBUG, " %8s (%d %s, 0%04o) %s\n",
@@ -97,7 +116,7 @@ index 63580c2..e8a2c01 100644
  	       (rc < 0 ? strerror(errno) : ""));
      }
  
-@@ -459,7 +479,7 @@ static int fsmMknod(int dirfd, const char *path, mode_t mode, dev_t dev)
+@@ -459,7 +482,7 @@ static int fsmMknod(int dirfd, const char *path, mode_t mode, dev_t dev)
  
      if (_fsm_debug) {
  	rpmlog(RPMLOG_DEBUG, " %8s (%d %s, 0%o, 0x%x) %s\n",
@@ -106,7 +125,7 @@ index 63580c2..e8a2c01 100644
  	       (unsigned)dev, (rc < 0 ? strerror(errno) : ""));
      }
  
-@@ -478,10 +498,10 @@ static void removeSBITS(int dirfd, const char *path)
+@@ -478,10 +501,10 @@ static void removeSBITS(int dirfd, const char *path)
  	int rc = 0;
  	/* We now know it's not a link so no need to worry about following */
  	if ((stb.st_mode & 06000) != 0) {
@@ -119,7 +138,7 @@ index 63580c2..e8a2c01 100644
  	    rc += cap_set_fileat(dirfd, path, NULL);
  	}
  #endif
-@@ -492,7 +512,7 @@ static void fsmDebug(const char *dn, const char *fpath, rpmFileAction action,
+@@ -492,7 +515,7 @@ static void fsmDebug(const char *dn, const char *fpath, rpmFileAction action,
  		     const struct stat *st)
  {
      rpmlog(RPMLOG_DEBUG, "%-10s %06o%3d (%4d,%4d)%6d %s%s\n",
@@ -128,7 +147,7 @@ index 63580c2..e8a2c01 100644
  	   (int)st->st_nlink, (int)st->st_uid,
  	   (int)st->st_gid, (int)st->st_size,
  	    (dn ? dn : ""), (fpath ? fpath : ""));
-@@ -593,7 +613,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
+@@ -593,7 +616,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
  	rc = fchmod(fd, fmode);
  	if (rc < 0) {
  	    struct stat st;
@@ -137,7 +156,7 @@ index 63580c2..e8a2c01 100644
  		rc = 0;
  	    }
  	}
-@@ -602,7 +622,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
+@@ -602,7 +625,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
  	if (rc < 0) {
  	    struct stat st;
  	    if (fstatat(dirfd, path, &st, AT_SYMLINK_NOFOLLOW) == 0 &&
@@ -146,7 +165,7 @@ index 63580c2..e8a2c01 100644
  		rc = 0;
  	    }
  	}
-@@ -615,6 +635,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
+@@ -615,6 +638,7 @@ static int fsmChmod(int fd, int dirfd, const char *path, mode_t mode)
      return rc;
  }
  
@@ -154,7 +173,7 @@ index 63580c2..e8a2c01 100644
  static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mtime)
  {
      int rc = 0;
-@@ -637,6 +658,37 @@ static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mti
+@@ -637,6 +661,37 @@ static int fsmUtime(int fd, int dirfd, const char *path, mode_t mode, time_t mti
  	rc = 0;
      return rc;
  }
@@ -192,7 +211,7 @@ index 63580c2..e8a2c01 100644
  
  static int fsmVerify(int dirfd, const char *path, rpmfi fi)
  {
-@@ -748,19 +800,19 @@ static int fsmSetmeta(int fd, int dirfd, const char *path,
+@@ -748,19 +803,19 @@ static int fsmSetmeta(int fd, int dirfd, const char *path,
  	rc = fsmChown(fd, dirfd, path, st->st_mode, st->st_uid, st->st_gid);
      }
      if (!rc && !S_ISLNK(st->st_mode)) {
@@ -215,7 +234,7 @@ index 63580c2..e8a2c01 100644
      }
      free(dest);
  
-@@ -770,7 +822,6 @@ static int fsmSetmeta(int fd, int dirfd, const char *path,
+@@ -770,7 +825,6 @@ static int fsmSetmeta(int fd, int dirfd, const char *path,
  static int fsmCommit(int dirfd, char **path, rpmfi fi, rpmFileAction action, const char *suffix)
  {
      int rc = 0;
@@ -223,26 +242,24 @@ index 63580c2..e8a2c01 100644
      /* XXX Special case /dev/log, which shouldn't be packaged anyways */
      if (!(S_ISSOCK(rpmfiFMode(fi)) && IS_DEV_LOG(*path))) {
  	const char *nsuffix = (action == FA_ALTNAME) ? SUFFIX_RPMNEW : NULL;
-@@ -911,7 +962,17 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
+@@ -911,7 +965,15 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
  
  	/* Remap file perms, owner, and group. */
  	rc = rpmfiStat(fi, (fp->skip == 0), &fp->sb);
 -
 +	#ifdef __MVS__
 +	    /* Copy z/OS-specific header values into our per-file state so we can
-+	     *        apply them at install time. Replace the accessor names below with
-+	     *               the real ones you use to get arrays from rpmfi. */
++	     * apply them at install time after fsmCommit(). */
 +	if (!rc) {
-+	    /* Example accessor names: replace with your actual api */
-+	     fp->ccsid = (uint16_t) (rpmfiFccsid(fi) ? rpmfiFccsid(fi) : 0);
-+	     fp->txtflag = (uint8_t) (rpmfiFtxtflag(fi) ? rpmfiFtxtflag(fi) : 0);
-+	     fp->genvalue = (uint32_t) (rpmfiFgenvalue(fi) ? rpmfiFgenvalue(fi) : 0);
++	     fp->ccsid    = (uint16_t) rpmfiFccsid(fi);
++	     fp->txtflag  = (uint8_t)  rpmfiFtxtflag(fi);
++	     fp->genvalue = (uint32_t) rpmfiFgenvalue(fi);
 +	}
 +#endif
  	/* Hardlinks are tricky and handled elsewhere for install */
  	fp->setmeta = (fp->skip == 0) &&
  		      (fp->sb.st_nlink == 1 || fp->action == FA_TOUCH);
-@@ -961,7 +1022,7 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
+@@ -961,7 +1023,7 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
  	    /* Run fsm file pre hook for all plugins */
  	    if (!rc)
  		rc = rpmpluginsCallFsmFilePre(plugins, fi, fp->fpath,
@@ -251,7 +268,7 @@ index 63580c2..e8a2c01 100644
  	    if (rc)
  		goto setmeta; /* for error notification */
  
-@@ -1020,8 +1081,9 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
+@@ -1020,8 +1082,9 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
                  }
              } else {
                  /* XXX Special case /dev/log, which shouldn't be packaged anyways */
@@ -262,37 +279,99 @@ index 63580c2..e8a2c01 100644
              }
  
  setmeta:
-@@ -1073,6 +1135,29 @@ setmeta:
+@@ -1073,6 +1136,91 @@ setmeta:
  
  	    if (!rc)
  		rc = fsmCommit(di.dirfd, &fp->fpath, fi, fp->action, fp->suffix);
 +#ifdef __MVS__
-+	    if (!rc && fp->setmeta) {
-+	        /* Apply CCSID/TXTFLAG/GENVALUE on final committed path */
++	    /*
++	     * Apply z/OS file tag (CCSID/txtflag) and extended attributes
++	     * (APF/prog-ctl/etc.) after fsmCommit() so we tag the *final*
++	     * destination path, not the temporary ;tid path that was already
++	     * renamed away by fsmCommit().
++	     *
++	     * We intentionally do NOT guard this on fp->setmeta, because
++	     * setmeta is false for hardlinked files (st_nlink > 1) yet they
++	     * still need to be tagged.
++	     */
++	    if (!rc && !fp->skip) {
++		/* Build the absolute path including --root prefix.
++		 * rpmfiDN() returns the path relative to the install root, so
++		 * we must prepend rpmChrootPath() (which is NULL when root is "/").
++		 * Note: __chattr requires a real absolute path; it does not use
++		 * CWD even when we have chdir'd into the root.
++		 */
++		const char *rootDir = rpmChrootPath();
++		const char *dn = rpmfiDN(fi);
 +		char fullpath[PATH_MAX];
-+		snprintf(fullpath, sizeof(fullpath), "%s/%s", rpmfiDN(fi), fp->fpath);
++		if (rootDir) {
++		    /* Strip trailing slash from rootDir to avoid double-slash */
++		    size_t rlen = strlen(rootDir);
++		    if (rlen > 0 && rootDir[rlen-1] == '/')
++			snprintf(fullpath, sizeof(fullpath), "%.*s%s%s",
++				 (int)(rlen-1), rootDir, dn, fp->fpath);
++		    else
++			snprintf(fullpath, sizeof(fullpath), "%s%s%s",
++				 rootDir, dn, fp->fpath);
++		} else {
++		    snprintf(fullpath, sizeof(fullpath), "%s%s", dn, fp->fpath);
++		}
 +
-+			/* apply CCSID/TXTFLAG */
-+	       		attrib_t attr;
-+			memset(&attr, 0, sizeof(attr));
-+			attr.att_filetagchg = 1;
-+			attr.att_filetag.ft_ccsid   = fp->ccsid;
-+			attr.att_filetag.ft_txtflag = fp->txtflag;
-+			int rc2 = __chattr(fullpath, &attr, sizeof(attr));
-+			/* apply GENVALUE bits */
-+			attrib_t pbits;
-+			memset(&pbits, 0, sizeof(pbits));
-+			if (fp->genvalue & __ST_APF_AUTH){    pbits.att_apfauthmask = 1; pbits.att_apfauth= 1;	pbits.att_setgen=1; }
-+			if (fp->genvalue & __ST_PROG_CTL){    pbits.att_progctlmask = 1; pbits.att_progctl = 1; pbits.att_setgen=1; }
-+			if (fp->genvalue & __ST_NO_SHAREAS){  pbits.att_noshareasmask = 1; pbits.att_noshareas = 1; pbits.att_setgen=1;}
-+			if (fp->genvalue & __ST_SHARE_LIB){   pbits.att_sharelibmask = 1; pbits.att_sharelib = 1; pbits.att_setgen=1;	}
-+			int rc3 = __chattr(fullpath, &pbits, sizeof(pbits));
++		/* Only apply file tag if a ccsid was actually stored in the RPM.
++		 * ccsid=0 means no tag metadata — skip to avoid EINVAL on
++		 * directories and untaggable file types.
++		 */
++		if (fp->ccsid != 0) {
++		    attrib_t attr;
++		    memset(&attr, 0, sizeof(attr));
++		    attr.att_filetagchg = 1;
++		    attr.att_filetag.ft_ccsid   = fp->ccsid;
++		    attr.att_filetag.ft_txtflag = fp->txtflag;
++		    int rc2 = __chattr(fullpath, &attr, sizeof(attr));
++		    if (rc2 != 0) {
++			rpmlog(RPMLOG_DEBUG,
++			       "zos_tag: __chattr '%s' failed: errno=%d %s "
++			       "(ccsid=%u txtflag=%u)\n",
++			       fullpath, errno, strerror(errno),
++			       (unsigned)fp->ccsid, (unsigned)fp->txtflag);
++		    }
++		}
++
++		/* Apply extended attribute (genvalue) bits */
++		if (fp->genvalue) {
++		    attrib_t pbits;
++		    memset(&pbits, 0, sizeof(pbits));
++		    if (fp->genvalue & __ST_APF_AUTH) {
++			pbits.att_apfauthmask = 1; pbits.att_apfauth = 1;
++			pbits.att_setgen = 1;
++		    }
++		    if (fp->genvalue & __ST_PROG_CTL) {
++			pbits.att_progctlmask = 1; pbits.att_progctl = 1;
++			pbits.att_setgen = 1;
++		    }
++		    if (fp->genvalue & __ST_NO_SHAREAS) {
++			pbits.att_noshareasmask = 1; pbits.att_noshareas = 1;
++			pbits.att_setgen = 1;
++		    }
++		    if (fp->genvalue & __ST_SHARE_LIB) {
++			pbits.att_sharelibmask = 1; pbits.att_sharelib = 1;
++			pbits.att_setgen = 1;
++		    }
++		    int rc3 = __chattr(fullpath, &pbits, sizeof(pbits));
++		    if (rc3 != 0) {
++			rpmlog(RPMLOG_DEBUG,
++			       "zos_tag: genvalue __chattr '%s' failed: "
++			       "errno=%d %s (genvalue=0x%x)\n",
++			       fullpath, errno, strerror(errno),
++			       (unsigned)fp->genvalue);
++		    }
++		}
 +	    }
 +#endif
  
  	    if (!rc)
  		fp->stage = FILE_COMMIT;
-@@ -1155,7 +1240,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
+@@ -1155,7 +1303,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
          if (fp->action == FA_ERASE) {
  	    int missingok = (rpmfiFFlags(fi) & (RPMFILE_MISSINGOK | RPMFILE_GHOST));
  
