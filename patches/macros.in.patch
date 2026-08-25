@@ -1,79 +1,33 @@
 diff --git a/macros.in b/macros.in
-index d0cfde445..9a3f5c800 100644
+index d0cfde4..54280bb 100644
 --- a/macros.in
 +++ b/macros.in
-@@ -375,7 +375,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+@@ -228,6 +228,8 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+ # Their purpose is to set up global filtering for all packages. If you need
+ # to set up specific filtering for your package use %__requires_exclude_from
+ # and %__provides_exclude_from instead.
++# z/OS: Exclude common interpreter paths from auto-generated Requires:
++%__requires_exclude	^(/bin/bash|/usr/bin/perl)$
+ %__global_requires_exclude_from		%{?_docdir:%{_docdir}}
+ %__global_provides_exclude_from		%{?_docdir:%{_docdir}}
+ 
+@@ -375,7 +377,8 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
  #	See rpm-payloadflags(7).
  #
  #%_source_payload	w9.gzdio
 -%_binary_payload	%[ %_rpmformat >=6 ? "w19.zstdio" : "w9.gzdio" ]
++# z/OS: Use lower compression level for faster builds
 +%_binary_payload	%[ %_rpmformat >=6 ? "w3.zstdio" : "w9.gzdio" ]
  
  #	Algorithm to use for generating file checksum digests on build.
  #	If not specified or 0, MD5 is used.
-@@ -643,7 +643,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+@@ -643,7 +646,8 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
  #	The output binary package file name template used when building
  #	binary packages, as described by rpm-queryformat(7).
  #
 -%_build_name_fmt<l>	%{ARCH}/%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}.rpm
++# z/OS: Use target platform instead of ARCH for package naming
 +%_build_name_fmt<l>	%{_target_platform}/%{NAME}-%{VERSION}-%{RELEASE}.%{_target_platform}.rpm
  
  #	Verify digest/signature flags for various rpm modes:
  #	0x30300 (RPMVSF_MASK_NODIGESTS)    --nohdrchk      if set, don't check digest(s)
-@@ -1347,56 +1347,6 @@ end
- %{expand:%__scm_setup_%{__scm} %{!-v:-q}}\
- %{!-N:%autopatch -q %{-v} %{-p:-p%{-p*}}}
- 
--# Add a sysuser user/group to a package. Takes a sysusers.d(5) line as
--# arguments, eg `%add_sysuser g mygroup 515`.
--# -b option omits the "Provides: " and the "Requires:" lines for group
--# membership to support formatting the entry outside spec context.
--%add_sysuser(-) %{lua:
--    if arg[1] == '-b' then
--        prefix = ''
--        table.remove(arg, 1)
--    else
--        prefix = 'Provides: '
--    end
--    if #arg < 2 then
--        macros.error({'not enough arguments'})
--    end
--    name = arg[2]
--    if arg[1] == 'g' then
--        type = 'group'
--    elseif arg[1] == 'u' or arg[1] == 'u!' then
--        type = 'user'
--    elseif arg[1] == 'm' and #arg >=3 then
--        type = 'groupmember'
--    elseif arg[1] == 'r' then
--        macros.warn({'ignoring unsupported sysuser type: '..arg[1]})
--        return
--    else
--        macros.error({'invalid sysuser type: '..arg[1]})
--    end
--    line = table.concat(arg, ' ')
--    -- \0-pad source string to avoid '=' in the output
--    llen = line:len()
--    ulen = math.ceil(4 * (llen / 3))
--    plen = 4 * math.ceil(llen / 3)
--    pad = string.rep('\\0', plen-ulen)
--    enc = rpm.b64encode(line..pad, 0);
--
--    if type == 'groupmember' then
--        print(string.format('%s%s(%s/%s) = %s\\n', prefix, type, name, arg[3], enc))
--	if (prefix ~= '') then
--	   prefix2 = rpm.expand('%[%{?_use_weak_usergroup_deps} > 0 ? "Recommends" : "Requires"]')
--	   print(string.format('%s: user(%s)\\n', prefix2, name))
--	   print(string.format('%s: group(%s)\\n', prefix2, arg[3]))
--	end
--    else
--        print(string.format('%s%s(%s) = %s\\n', prefix, type, name, enc))
--    end
--    if type == 'user' then
--        print(string.format('%s%s(%s)\\n', prefix, 'group', name))
--    end
--}
--
- # Global buildsystem defaults
- %buildsystem_default_prep() %autosetup -C -p1 %*
- 

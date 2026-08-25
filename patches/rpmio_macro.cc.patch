@@ -1,8 +1,25 @@
 diff --git a/rpmio/macro.cc b/rpmio/macro.cc
-index 21d1757..07d2530 100644
+index 97330cd..ee7b146 100644
 --- a/rpmio/macro.cc
 +++ b/rpmio/macro.cc
-@@ -1131,19 +1131,24 @@ static void doShescape(rpmMacroBuf mb, rpmMacroEntry me, ARGV_t argv, size_t *pa
+@@ -25,7 +25,16 @@
+ 
+ #define	iseol(_c)	((_c) == '\n' || (_c) == '\r')
+ 
++#if defined(__MVS__)
++/* z/OS libc BUFSIZ is only 512 bytes, which is too small to hold some
++ * upstream multi-line macro bodies intact; rdcl() silently truncates/
++ * aborts brace matching once the buffer is exhausted, producing spurious
++ * "unterminated body" errors. Use a fixed, larger size instead of scaling
++ * off the platform's tiny BUFSIZ. */
++#define MACROBUFSIZ (8192 * 2)
++#else
+ #define MACROBUFSIZ (BUFSIZ * 2)
++#endif
+ 
+ #include <rpm/rpmio.h>
+ #include <rpm/rpmstring.h>
+@@ -1206,19 +1215,24 @@ static void doShescape(rpmMacroBuf mb, rpmMacroEntry me, ARGV_t argv, size_t *pa
  	rpmMacroBufAppend(mb, '\'');
      }
  }
