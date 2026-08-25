@@ -1,8 +1,8 @@
 diff --git a/macros.in b/macros.in
-index 07d4340..794efad 100644
+index d0cfde445..9a3f5c800 100644
 --- a/macros.in
 +++ b/macros.in
-@@ -371,7 +371,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+@@ -375,7 +375,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
  #	See rpm-payloadflags(7).
  #
  #%_source_payload	w9.gzdio
@@ -11,16 +11,16 @@ index 07d4340..794efad 100644
  
  #	Algorithm to use for generating file checksum digests on build.
  #	If not specified or 0, MD5 is used.
-@@ -640,7 +640,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
- #	binary packages, as described by rpm-queryformat(7). Percent signs need
- #	to be escaped.
+@@ -643,7 +643,7 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
+ #	The output binary package file name template used when building
+ #	binary packages, as described by rpm-queryformat(7).
  #
--%_build_name_fmt	%%{ARCH}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
-+%_build_name_fmt	%{_target_platform}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%{_target_platform}.rpm
+-%_build_name_fmt<l>	%{ARCH}/%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}.rpm
++%_build_name_fmt<l>	%{_target_platform}/%{NAME}-%{VERSION}-%{RELEASE}.%{_target_platform}.rpm
  
  #	Verify digest/signature flags for various rpm modes:
  #	0x30300 (RPMVSF_MASK_NODIGESTS)    --nohdrchk      if set, don't check digest(s)
-@@ -1344,56 +1344,6 @@ end
+@@ -1347,56 +1347,6 @@ end
  %{expand:%__scm_setup_%{__scm} %{!-v:-q}}\
  %{!-N:%autopatch -q %{-v} %{-p:-p%{-p*}}}
  
