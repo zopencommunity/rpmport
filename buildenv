@@ -1,5 +1,5 @@
 # bump: rpm-version /RPM_VERSION="(.*)"/ gitrefs:https://github.com/rpm-software-management/rpm.git|re:/rpm-([\d.]+)-release/$1/|*
-RPM_VERSION="6.0.2"
+RPM_VERSION="6.1.0"
 
 export ZOPEN_BUILD_LINE="STABLE"
 
@@ -31,16 +31,17 @@ zopen_pre_patch()
   src_dir="$1"
   original_dir=$(pwd)
   cd "${src_dir}"/rpm/rpmio || return 1
-  
-  # Clone libpgpr at a pinned commit for reproducibility
-  # Commit 40b9e8a072db4abc632cd93652f0b7ad351eb340 from 2026-03-18
+
+  # Clone libpgpr at a released tag for reproducibility
+  # bump: libpgpr-version /LIBPGPR_VERSION="(.*)"/ https://github.com/rpm-software-management/libpgpr.git|*
+  LIBPGPR_VERSION="1.3"
   if [ ! -d "rpmpgp_legacy" ]; then
     git clone https://github.com/rpm-software-management/libpgpr rpmpgp_legacy || return 1
     cd rpmpgp_legacy || return 1
-    git checkout 40b9e8a072db4abc632cd93652f0b7ad351eb340 || return 1
+    git checkout ${LIBPGPR_VERSION} || return 1
     cd ..
   fi
-  
+
   cd "${original_dir}" || return 1
 }
 

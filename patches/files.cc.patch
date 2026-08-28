@@ -1,5 +1,5 @@
 diff --git a/build/files.cc b/build/files.cc
-index ac17761..99a157d 100644
+index 8689ae3..b674efe 100644
 --- a/build/files.cc
 +++ b/build/files.cc
 @@ -24,7 +24,7 @@
@@ -85,15 +85,15 @@ index ac17761..99a157d 100644
      /* Use 64bit sizes always on v6, on older only if required. */
      if (spec->rpmformat < 6 && totalFileSize < UINT32_MAX) {
  	rpm_off_t totalsize = totalFileSize;
-@@ -1404,7 +1426,6 @@ static rpmRC addFile(FileList fl, const char * diskPath,
+@@ -1403,7 +1425,6 @@ static rpmRC addFile(FileList fl, const char * diskPath,
      const char *fileUname;
      const char *fileGname;
      rpmRC rc = RPMRC_FAIL; /* assume failure */
 -
      /* Strip trailing slash. The special case of '/' path is handled below. */
-     if (plen > 0 && diskPath[plen - 1] == '/') {
- 	diskPath = strcpy(buf, diskPath);
-@@ -1488,7 +1509,7 @@ static rpmRC addFile(FileList fl, const char * diskPath,
+     if (dp.size() > 0 && dp.back() == '/')
+ 	dp.pop_back();
+@@ -1487,7 +1508,7 @@ static rpmRC addFile(FileList fl, const char * diskPath,
  	return recurseDir(fl, diskPath);
      }
  
@@ -102,7 +102,7 @@ index ac17761..99a157d 100644
  
      /* Explicit %attr() always wins */
      if (fl->cur.ar.ar_fmodestr) {
-@@ -1685,7 +1706,9 @@ static rpmRC processMetadataFile(Package pkg, FileList fl,
+@@ -1684,7 +1705,9 @@ static rpmRC processMetadataFile(Package pkg, FileList fl,
      rc = RPMRC_OK;
  
      if (absolute)
@@ -112,7 +112,7 @@ index ac17761..99a157d 100644
  
  exit:
      free(apkt);
-@@ -2201,7 +2224,9 @@ static rpmRC processBinaryFile(Package pkg, FileList fl, const char * fileName,
+@@ -2198,7 +2221,9 @@ static rpmRC processBinaryFile(Package pkg, FileList fl, const char * fileName,
  	goto exit;
  
      for (i = 0; i < argc; i++)
@@ -122,7 +122,7 @@ index ac17761..99a157d 100644
      argvFree(argv);
  
  exit:
-@@ -2615,7 +2640,6 @@ static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
+@@ -2612,7 +2637,6 @@ static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
      /* Verify that file attributes scope over hardlinks correctly. */
      if (checkHardLinks(fl.files) && spec->rpmformat < 6)
  	(void) rpmlibNeedsFeature(pkg, "PartialHardlinkSets", "4.0.4-1");

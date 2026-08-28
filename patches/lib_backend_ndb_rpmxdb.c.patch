@@ -1,5 +1,5 @@
 diff --git a/lib/backend/ndb/rpmxdb.c b/lib/backend/ndb/rpmxdb.c
-index e9c7233..ce4c8b4 100644
+index 26085f72e..af9799613 100644
 --- a/lib/backend/ndb/rpmxdb.c
 +++ b/lib/backend/ndb/rpmxdb.c
 @@ -18,13 +18,40 @@
@@ -41,6 +41,6 @@ index e9c7233..ce4c8b4 100644
 +
 +#endif
 +
- typedef struct rpmxdb_s {
+ struct rpmxdb_s {
      rpmpkgdb pkgdb;             /* main database */
      char *filename;
