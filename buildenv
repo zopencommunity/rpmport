@@ -23,7 +23,7 @@ export USE_CLANG_WRAPPER=1
 export ZOPEN_BOOTSTRAP="skip"  ## Bootstrap program to run (defaults to './bootstrap')
 export ZOPEN_CONFIGURE="cmake" ## Configuration program to run (defaults to './configure')
 
-export ZOPEN_RUNTIME_DEPS="file sed coreutils diffutils findutils grep bash gawk bzip2 gzip xz lzip patch tar unzip zstd git quilt make gpg popt"
+export ZOPEN_RUNTIME_DEPS="file sed coreutils diffutils findutils grep bash gawk bzip2 gzip xz lzip tar unzip zstd gpg popt"
 export ZOPEN_NAME="rpm-${RPM_VERSION}"
 
 zopen_pre_patch()
