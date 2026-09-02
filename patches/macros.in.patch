@@ -1,5 +1,5 @@
 diff --git a/macros.in b/macros.in
-index d0cfde4..54280bb 100644
+index d0cfde4..16d316f 100644
 --- a/macros.in
 +++ b/macros.in
 @@ -228,6 +228,8 @@ Supplements:   (%{name} = %{version}-%{release} and langpacks-%{1})\
@@ -27,7 +27,7 @@ index d0cfde4..54280bb 100644
  #
 -%_build_name_fmt<l>	%{ARCH}/%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}.rpm
 +# z/OS: Use target platform instead of ARCH for package naming
-+%_build_name_fmt<l>	%{_target_platform}/%{NAME}-%{VERSION}-%{RELEASE}.%{_target_platform}.rpm
++%_build_name_fmt	%{ARCH}/%{NAME}-%{VERSION}-%{RELEASE}.%{_target_platform}.rpm
  
  #	Verify digest/signature flags for various rpm modes:
  #	0x30300 (RPMVSF_MASK_NODIGESTS)    --nohdrchk      if set, don't check digest(s)
