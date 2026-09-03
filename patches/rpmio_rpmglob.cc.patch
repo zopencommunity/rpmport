@@ -1,5 +1,5 @@
 diff --git a/rpmio/rpmglob.cc b/rpmio/rpmglob.cc
-index 90426b7..d302cd9 100644
+index 90426b7..a4b1972 100644
 --- a/rpmio/rpmglob.cc
 +++ b/rpmio/rpmglob.cc
 @@ -62,6 +62,10 @@ int rpmGlobPath(const char * pattern, rpmglobFlags flags,
@@ -22,14 +22,14 @@ index 90426b7..d302cd9 100644
      gflags |= GLOB_BRACE;
 -    if (home != NULL && strlen(home) > 0) 
 +#endif
++#ifdef GLOB_TILDE
 +    if (home != NULL && strlen(home) > 0)
-+#ifdef GLOB_TILDE 
  	gflags |= GLOB_TILDE;
 +#endif
  #if HAVE_GLOB_ONLYDIR
      if (dir_only)
  	gflags |= GLOB_ONLYDIR;
-@@ -102,7 +109,23 @@ int rpmGlobPath(const char * pattern, rpmglobFlags flags,
+@@ -102,9 +109,42 @@ int rpmGlobPath(const char * pattern, rpmglobFlags flags,
      gl.gl_pathc = 0;
      gl.gl_pathv = NULL;
      
@@ -37,11 +37,26 @@ index 90426b7..d302cd9 100644
 +#ifndef GLOB_TILDE
 +    if (pattern[0] == '~' && (pattern[1] == '/' || pattern[1] == '\0')) {
 +        if (home != NULL && strlen(home) > 0) {
++            size_t home_len = strlen(home);
++            size_t pattern_len = strlen(pattern);
 +            if (pattern[1] == '/') {
-+                expanded_pattern = (char *)malloc(strlen(home) + strlen(pattern));
-+                sprintf(expanded_pattern, "%s%s", home, pattern + 1);
++                /* Allocate: home + pattern (minus ~) + null terminator */
++                expanded_pattern = (char *)malloc(home_len + pattern_len);
++                if (expanded_pattern == NULL) {
++                    rc = GLOB_NOSPACE;
++                    goto exit;
++                }
++                memcpy(expanded_pattern, home, home_len);
++                memcpy(expanded_pattern + home_len, pattern + 1, pattern_len);
++                expanded_pattern[home_len + pattern_len - 1] = '\0';
 +            } else {
-+                expanded_pattern = strdup(home);
++                /* Just ~ by itself */
++                expanded_pattern = (char *)malloc(home_len + 1);
++                if (expanded_pattern == NULL) {
++                    rc = GLOB_NOSPACE;
++                    goto exit;
++                }
++                memcpy(expanded_pattern, home, home_len + 1);
 +            }
 +            glob_pattern = expanded_pattern;
 +        }
@@ -49,18 +64,22 @@ index 90426b7..d302cd9 100644
 +    rc = glob(glob_pattern, gflags, NULL, &gl);
 +#else
      rc = glob(pattern, gflags, NULL, &gl);
+-    if (rc)
 +#endif
-     if (rc)
++    if (rc) {
++        globfree(&gl);  /* Free any partial allocations on error */
  	goto exit;
++    }
  
-@@ -115,6 +138,10 @@ int rpmGlobPath(const char * pattern, rpmglobFlags flags,
- 	argvAdd(argvPtr, gl.gl_pathv[i]);
-     }
+     for (unsigned i = 0; i < gl.gl_pathc; i++) {
+ 	if (dir_only && !(flags & RPMGLOB_NOCHECK)) {
+@@ -117,6 +157,9 @@ int rpmGlobPath(const char * pattern, rpmglobFlags flags,
      globfree(&gl);
-+#ifndef GLOB_TILDE
-+    if (expanded_pattern)
-+        free(expanded_pattern);
-+#endif
  
  exit:
++#ifndef GLOB_TILDE
++    free(expanded_pattern);  /* free() handles NULL safely */
++#endif
      argc = argvCount(*argvPtr);
+     argvFree(argv);
+     if (argcPtr)
