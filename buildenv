@@ -88,15 +88,12 @@ ZZ
 zopen_append_to_setup()
 {
   cat <<'SETUP'
-# Create symlink to persistent RPM macros file (created by zopen-init)
-if [ ! -e "${RPM_HOME}/etc/rpm/macros.zopen" ]; then
-  ZOPEN_ROOTFS_DERIVED="$(cd "${RPM_HOME}/../../../../.." 2>/dev/null && pwd -P)" || ZOPEN_ROOTFS_DERIVED=""
-  
-  if [ -n "${ZOPEN_ROOTFS_DERIVED}" ] && [ -f "${ZOPEN_ROOTFS_DERIVED}/etc/rpm/macros.zopen" ]; then
-    ln -sf "${ZOPEN_ROOTFS_DERIVED}/etc/rpm/macros.zopen" "${RPM_HOME}/etc/rpm/macros.zopen"
-  else
-    echo "WARNING: RPM persistent configuration not found." >&2
-    echo "         See installation caveats for details." >&2
+# Copy macros.zopen to lib/rpm/macros.d/ for RPM to find
+# RPM searches lib/rpm/macros.d/ for macro files
+if [ -f "${RPM_HOME}/lib/rpm/macros.zopen" ]; then
+  mkdir -p "${RPM_HOME}/lib/rpm/macros.d"
+  if [ ! -f "${RPM_HOME}/lib/rpm/macros.d/macros.zopen" ]; then
+    cp "${RPM_HOME}/lib/rpm/macros.zopen" "${RPM_HOME}/lib/rpm/macros.d/macros.zopen"
   fi
 fi
 SETUP
@@ -113,27 +110,18 @@ zopen_post_install()
     ln -sf "liblibrpmio.a" "librpmio.a"
     cd - >/dev/null
   fi
-}
-
-zopen_install_caveats()
-{
-  cat << 'CAVEAT'
-RPM Configuration:
-------------------
-RPM uses persistent configuration and database directories that survive
-package reinstallation:
-  - Config: ${ZOPEN_ROOTFS}/etc/rpm/
-  - Database: ${ZOPEN_ROOTFS}/var/lib/rpm/
-
-These are created by zopen-init and shared across RPM versions.
-
-If you see warnings about missing configuration, your zopen environment
-may need updating. To fix:
-  1. zopen init --re-init    # Update zopen framework
-  2. zopen install rpm       # Reinstall RPM to apply config
-
-Note: Step 2 is required to re-run the setup and create the symlink.
-CAVEAT
+  
+  # Copy macros.zopen to lib/rpm/ directory (will be packaged)
+  macros_source="${ZOPEN_ROOT}/macros.zopen"
+  macros_dest="$prefix/lib/rpm/macros.zopen"
+  
+  if [ -f "${macros_source}" ]; then
+    mkdir -p "$prefix/lib/rpm"
+    cp "${macros_source}" "${macros_dest}"
+    echo "Copied macros.zopen to ${macros_dest}"
+  else
+    echo "WARNING: macros.zopen not found at ${macros_source}" >&2
+  fi
 }
 
 zopen_append_to_zoslib_env(){
