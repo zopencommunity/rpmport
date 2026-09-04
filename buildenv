@@ -90,10 +90,9 @@ zopen_append_to_setup()
   cat <<'SETUP'
 # Create symlink to persistent RPM macros file (created by zopen-init)
 if [ ! -e "${RPM_HOME}/etc/rpm/macros.zopen" ]; then
-  ZOPEN_ROOTFS_DERIVED="$(cd "${RPM_HOME}/../../../../.." && pwd -P)"
+  ZOPEN_ROOTFS_DERIVED="$(cd "${RPM_HOME}/../../../../.." 2>/dev/null && pwd -P)" || ZOPEN_ROOTFS_DERIVED=""
   
-  if [ -f "${ZOPEN_ROOTFS_DERIVED}/etc/rpm/macros.zopen" ]; then
-    mkdir -p "${RPM_HOME}/etc/rpm"
+  if [ -n "${ZOPEN_ROOTFS_DERIVED}" ] && [ -f "${ZOPEN_ROOTFS_DERIVED}/etc/rpm/macros.zopen" ]; then
     ln -sf "${ZOPEN_ROOTFS_DERIVED}/etc/rpm/macros.zopen" "${RPM_HOME}/etc/rpm/macros.zopen"
   else
     echo "WARNING: RPM persistent configuration not found." >&2
