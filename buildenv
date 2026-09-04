@@ -92,9 +92,7 @@ zopen_append_to_setup()
 # RPM searches lib/rpm/macros.d/ for macro files
 if [ -f "${RPM_HOME}/lib/rpm/macros.zopen" ]; then
   mkdir -p "${RPM_HOME}/lib/rpm/macros.d"
-  if [ ! -f "${RPM_HOME}/lib/rpm/macros.d/macros.zopen" ]; then
-    cp "${RPM_HOME}/lib/rpm/macros.zopen" "${RPM_HOME}/lib/rpm/macros.d/macros.zopen"
-  fi
+  ln -sf "../macros.zopen" "${RPM_HOME}/lib/rpm/macros.d/macros.zopen"
 fi
 SETUP
 }
