@@ -23,7 +23,7 @@ export USE_CLANG_WRAPPER=1
 export ZOPEN_BOOTSTRAP="skip"  ## Bootstrap program to run (defaults to './bootstrap')
 export ZOPEN_CONFIGURE="cmake" ## Configuration program to run (defaults to './configure')
 
-export ZOPEN_RUNTIME_DEPS="file sed coreutils diffutils findutils grep bash gawk bzip2 gzip xz lzip tar unzip zstd gpg popt"
+export ZOPEN_RUNTIME_DEPS="file sed coreutils diffutils findutils grep bash gawk bzip2 gzip xz lzip tar unzip zstd gpg popt meta"
 export ZOPEN_NAME="rpm-${RPM_VERSION}"
 
 zopen_pre_patch()
@@ -84,19 +84,57 @@ fi
 ZZ
 }
 
+
+zopen_append_to_setup()
+{
+  cat <<'SETUP'
+# Create symlink to persistent RPM macros file (created by zopen-init)
+if [ ! -e "${RPM_HOME}/etc/rpm/macros.zopen" ]; then
+  ZOPEN_ROOTFS_DERIVED="$(cd "${RPM_HOME}/../../../../.." && pwd -P)"
+  
+  if [ -f "${ZOPEN_ROOTFS_DERIVED}/etc/rpm/macros.zopen" ]; then
+    mkdir -p "${RPM_HOME}/etc/rpm"
+    ln -sf "${ZOPEN_ROOTFS_DERIVED}/etc/rpm/macros.zopen" "${RPM_HOME}/etc/rpm/macros.zopen"
+  else
+    echo "WARNING: RPM persistent configuration not found." >&2
+    echo "         See installation caveats for details." >&2
+  fi
+fi
+SETUP
+}
+
 zopen_post_install() 
 {
   prefix=$1
-  lib="$prefix/lib"
-  saved_pwd=$(pwd)
-
-  if [ -d "$lib" ]; then
-    cd "$lib" || return 1
-    ln -sf "liblibrpm.a"  "librpm.a"
-    ln -sf "liblibrpmio.a"  "librpmio.a"
+  
+  # Create library symlinks
+  if [ -d "$prefix/lib" ]; then
+    cd "$prefix/lib"
+    ln -sf "liblibrpm.a" "librpm.a"
+    ln -sf "liblibrpmio.a" "librpmio.a"
+    cd - >/dev/null
   fi
+}
 
-  cd "$saved_pwd" || true
+zopen_install_caveats()
+{
+  cat << 'CAVEAT'
+RPM Configuration:
+------------------
+RPM uses persistent configuration and database directories that survive
+package reinstallation:
+  - Config: ${ZOPEN_ROOTFS}/etc/rpm/
+  - Database: ${ZOPEN_ROOTFS}/var/lib/rpm/
+
+These are created by zopen-init and shared across RPM versions.
+
+If you see warnings about missing configuration, your zopen environment
+may need updating. To fix:
+  1. zopen init --re-init    # Update zopen framework
+  2. zopen install rpm       # Reinstall RPM to apply config
+
+Note: Step 2 is required to re-run the setup and create the symlink.
+CAVEAT
 }
 
 zopen_append_to_zoslib_env(){
