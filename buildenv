@@ -88,7 +88,7 @@ ZZ
 zopen_append_to_setup()
 {
   cat <<'SETUP'
-# Copy macros.zopen to lib/rpm/macros.d/ for RPM to find
+# Link macros.zopen into lib/rpm/macros.d/ for RPM to load
 # RPM searches lib/rpm/macros.d/ for macro files
 if [ -f "${RPM_HOME}/lib/rpm/macros.zopen" ]; then
   mkdir -p "${RPM_HOME}/lib/rpm/macros.d"
