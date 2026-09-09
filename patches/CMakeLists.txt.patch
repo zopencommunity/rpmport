@@ -1,8 +1,16 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7c1a9ff..a1ec931 100644
+index e2a1c5c..be5133c 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -78,7 +78,6 @@ function(findutil UTIL TRY)
+@@ -20,6 +20,7 @@ option(ENABLE_BDB_RO "Enable read-only Berkeley DB rpmdb support (EXPERIMENTAL)"
+ option(ENABLE_TESTSUITE "Enable test-suite" OFF)
+ option(ENABLE_ASAN "Enable address-sanitizer" OFF)
+ option(ENABLE_UBSAN "Enable undefined behavior-sanitizer" OFF)
++option(INSTALL_RPMCONFIG "Install RPM configuration files (macros, rpmrc, rpmpopt, fileattrs, platform, macros.d)" ON)
+ 
+ option(WITH_CAP "Build with capability support" ON)
+ option(WITH_ACL "Build with ACL support" ON)
+@@ -79,7 +80,6 @@ function(findutil UTIL TRY)
  		PATHS ENV MYPATH
  		PATHS /usr/local/bin /usr/bin /bin
  		PATHS /usr/local/sbin /usr/sbin /sbin
@@ -10,7 +18,7 @@ index 7c1a9ff..a1ec931 100644
  	)
  	if (NOT ${UTIL})
  		list(GET TRY 0 util)
-@@ -157,8 +156,8 @@ function(makemacros)
+@@ -160,8 +160,8 @@ function(makemacros)
  
  	list(GET db_backends 0 DB_BACKEND)
  
@@ -21,7 +29,30 @@ index 7c1a9ff..a1ec931 100644
  	set(host_vendor ${RPM_VENDOR})
  	set(host ${host_cpu}-${host_vendor}-${host_os})
  
-@@ -391,7 +390,7 @@ if (LIBDW_FOUND)
+@@ -175,13 +175,15 @@ function(makemacros)
+ 	configure_file(rpmpopt.in rpmpopt-${PROJECT_VERSION} @ONLY)
+ 	configure_file(rpm.pc.in rpm.pc @ONLY)
+ 
+-	install(CODE "execute_process(COMMAND
+-		${CMAKE_COMMAND} -E env pkglibdir=${RPM_CONFIGDIR}
+-			${CMAKE_SOURCE_DIR}/installplatform
+-			rpmrc platform macros
+-			${RPMCANONVENDOR} ${RPMCANONOS} ${RPMCANONGNU}
+-		WORKING_DIRECTORY ${CMAKE_BINARY_DIR})"
+-	)
++	if (INSTALL_RPMCONFIG)
++		install(CODE "execute_process(COMMAND
++			${CMAKE_COMMAND} -E env pkglibdir=${RPM_CONFIGDIR}
++				${CMAKE_SOURCE_DIR}/installplatform
++				rpmrc platform macros
++				${RPMCANONVENDOR} ${RPMCANONOS} ${RPMCANONGNU}
++			WORKING_DIRECTORY ${CMAKE_BINARY_DIR})"
++		)
++	endif()
+ endfunction()
+ 
+ include(CheckLibraryExists)
+@@ -394,7 +396,7 @@ if (LIBDW_FOUND)
  	set(HAVE_LIBDW 1)
  	check_library_exists(dw dwelf_elf_begin "" HAVE_DWELF_ELF_BEGIN)
  endif()
@@ -30,7 +61,53 @@ index 7c1a9ff..a1ec931 100644
  check_symbol_exists(GLOB_ONLYDIR "glob.h" HAVE_GLOB_ONLYDIR)
  check_symbol_exists(major "sys/sysmacros.h" MAJOR_IN_SYSMACROS)
  if (NOT MAJOR_IN_SYSMACROS)
-@@ -553,7 +552,7 @@ install(FILES
+@@ -473,21 +475,28 @@ if (ENABLE_PLUGINS)
+ endif()
+ 
+ 
+-add_subdirectory(fileattrs)
++if (INSTALL_RPMCONFIG)
++	add_subdirectory(fileattrs)
++endif()
++
+ add_subdirectory(scripts)
+ 
+ makemacros()
+-foreach(f macros rpmrc rpmpopt-${PROJECT_VERSION})
+-	install(FILES ${CMAKE_BINARY_DIR}/${f} DESTINATION ${RPM_CONFIGDIR})
+-endforeach()
++if (INSTALL_RPMCONFIG)
++	foreach(f macros rpmrc rpmpopt-${PROJECT_VERSION})
++		install(FILES ${CMAKE_BINARY_DIR}/${f} DESTINATION ${RPM_CONFIGDIR})
++	endforeach()
++endif()
+ 
+ if (ENABLE_TESTSUITE)
+ 	add_subdirectory(tests)
+ endif()
+ 
+ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rpm.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+-install(DIRECTORY DESTINATION ${RPM_CONFIGDIR}/lua)
+-install(DIRECTORY DESTINATION ${RPM_CONFIGDIR}/macros.d)
++if (INSTALL_RPMCONFIG)
++	install(DIRECTORY DESTINATION ${RPM_CONFIGDIR}/lua)
++	install(DIRECTORY DESTINATION ${RPM_CONFIGDIR}/macros.d)
++endif()
+ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/rpm)
+ install(FILES CONTRIBUTING.md COPYING CREDITS INSTALL README TYPE DOC)
+ 
+@@ -495,8 +504,8 @@ install(FILES CONTRIBUTING.md COPYING CREDITS INSTALL README TYPE DOC)
+ foreach(cmd rpmuncompress rpm-setup-autosign)
+ 	install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} \
+ 		-E create_symlink \
+-			../../${CMAKE_INSTALL_BINDIR}/${cmd} \
+-			\$ENV{DESTDIR}/${RPM_CONFIGDIR}/${cmd})")
++		    ../../${CMAKE_INSTALL_BINDIR}/${cmd} \
++		    \$ENV{DESTDIR}/${RPM_CONFIGDIR}/${cmd})")
+ endforeach()
+ 
+ add_custom_target(ChangeLog
+@@ -563,7 +572,7 @@ install(FILES
  	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rpm
  )
  
