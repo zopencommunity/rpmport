@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index e2a1c5c..be5133c 100644
+index e2a1c5c..cc7192a 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -20,6 +20,7 @@ option(ENABLE_BDB_RO "Enable read-only Berkeley DB rpmdb support (EXPERIMENTAL)"
@@ -61,16 +61,19 @@ index e2a1c5c..be5133c 100644
  check_symbol_exists(GLOB_ONLYDIR "glob.h" HAVE_GLOB_ONLYDIR)
  check_symbol_exists(major "sys/sysmacros.h" MAJOR_IN_SYSMACROS)
  if (NOT MAJOR_IN_SYSMACROS)
-@@ -473,21 +475,28 @@ if (ENABLE_PLUGINS)
+@@ -473,21 +475,30 @@ if (ENABLE_PLUGINS)
  endif()
  
  
 -add_subdirectory(fileattrs)
+-add_subdirectory(scripts)
 +if (INSTALL_RPMCONFIG)
 +	add_subdirectory(fileattrs)
 +endif()
 +
- add_subdirectory(scripts)
++if (INSTALL_RPMCONFIG)
++	add_subdirectory(scripts)
++endif()
  
  makemacros()
 -foreach(f macros rpmrc rpmpopt-${PROJECT_VERSION})
@@ -96,7 +99,7 @@ index e2a1c5c..be5133c 100644
  install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/rpm)
  install(FILES CONTRIBUTING.md COPYING CREDITS INSTALL README TYPE DOC)
  
-@@ -495,8 +504,8 @@ install(FILES CONTRIBUTING.md COPYING CREDITS INSTALL README TYPE DOC)
+@@ -495,8 +506,8 @@ install(FILES CONTRIBUTING.md COPYING CREDITS INSTALL README TYPE DOC)
  foreach(cmd rpmuncompress rpm-setup-autosign)
  	install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} \
  		-E create_symlink \
@@ -107,7 +110,7 @@ index e2a1c5c..be5133c 100644
  endforeach()
  
  add_custom_target(ChangeLog
-@@ -563,7 +572,7 @@ install(FILES
+@@ -563,7 +574,7 @@ install(FILES
  	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rpm
  )
  
