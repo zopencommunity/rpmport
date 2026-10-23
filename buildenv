@@ -24,7 +24,7 @@ export ZOPEN_BOOTSTRAP="skip"  ## Bootstrap program to run (defaults to './boots
 export ZOPEN_CONFIGURE="cmake" ## Configuration program to run (defaults to './configure')
 
 export ZOPEN_RUNTIME_DEPS="file bash gpg rpmconfig"
-export ZOPEN_BUILDTIME_DEPS="libgcrypt lua popt"
+export ZOPEN_BUILDTIME_DEPS="libgcrypt lua popt sqlite zlib bzip2 zstd gettext"
 export ZOPEN_NAME="rpm-${RPM_VERSION}"
 
 zopen_pre_patch()
