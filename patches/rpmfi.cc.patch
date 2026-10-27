@@ -1,5 +1,5 @@
 diff --git a/lib/rpmfi.cc b/lib/rpmfi.cc
-index d5d7bde..988870c 100644
+index e5e0666..149eeb5 100644
 --- a/lib/rpmfi.cc
 +++ b/lib/rpmfi.cc
 @@ -34,6 +34,13 @@ using hardlinks = std::vector<int>;
@@ -211,7 +211,23 @@ index d5d7bde..988870c 100644
      }
  
      /* freeze the pool to save memory, but only if private pool */
-@@ -2453,3 +2572,44 @@ char * rpmfileStrerror(int rc)
+@@ -2328,7 +2447,7 @@ ssize_t rpmfiArchiveRead(rpmfi fi, void * buf, size_t size)
+ int rpmfiArchiveReadToFilePsm(rpmfi fi, FD_t fd, int nodigest, rpmpsm psm)
+ {
+     if (fi == NULL || fi->archive == NULL || fd == NULL)
+-	return -1;
++	return RPMERR_INTERNAL;
+ 
+     rpm_loff_t left = rpmfiFSize(fi);
+     const unsigned char * fidigest = NULL;
+@@ -2448,7 +2567,51 @@ char * rpmfileStrerror(int rc)
+ 	}
+     } else {
+ 	rasprintf(&msg, _("%s: (error 0x%x)"), prefix, rc);
++	if (myerrno) {
++	    rstrscat(&msg, " - ", strerror(myerrno), NULL);
++	}
+     }
  
      return msg;
  }
