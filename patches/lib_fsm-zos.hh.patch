@@ -1,0 +1,19 @@
+diff --git a/lib/fsm-zos.hh b/lib/fsm-zos.hh
+new file mode 100644
+--- /dev/null
++++ b/lib/fsm-zos.hh
+@@ -0,0 +1,14 @@
++#ifndef RPM_FSM_ZOS_HH
++#define RPM_FSM_ZOS_HH
++
++/* Private wire protocol: directory fds 3/4, binary result on fd 5. */
++struct fsmZosResult {
++    int rc;
++    int error;
++};
++
++int fsmZosDirop(const char *op, int odirfd, const char *opath,
++		int dirfd, const char *path);
++int fsmZosRootFd(void);
++
++#endif

@@ -1,0 +1,145 @@
+diff --git a/lib/fsm-zos.cc b/lib/fsm-zos.cc
+new file mode 100644
+--- /dev/null
++++ b/lib/fsm-zos.cc
+@@ -0,0 +1,140 @@
++#include <errno.h>
++#include <fcntl.h>
++#include <stdlib.h>
++#include <sys/wait.h>
++#include <unistd.h>
++
++#include "fsm-zos.hh"
++
++extern char **environ;
++
++/* Also used before exec: only async-signal-safe calls are permitted here. */
++static void fsmZosReply(int fd, int rc, int error)
++{
++    fsmZosResult result = { rc, error };
++    const char *p = reinterpret_cast<const char *>(&result);
++    size_t left = sizeof(result);
++
++    while (left) {
++	ssize_t n = write(fd, p, left);
++	if (n < 0 && errno == EINTR)
++	    continue;
++	if (n <= 0)
++	    break;
++	p += n;
++	left -= n;
++    }
++}
++
++int fsmZosDirop(const char *op, int odirfd, const char *opath,
++		int dirfd, const char *path)
++{
++    int saved = errno;
++    int pipefd[2];
++    int error = 0;
++    int rootfd = fsmZosRootFd();
++    const char *helper = getenv("RPM_FSM_HELPER");
++    if (!helper)
++	helper = RPM_FSM_HELPER;
++    if (helper[0] != '/') {
++	errno = EINVAL;
++	return -1;
++    }
++    fsmZosResult result = { -1, EIO };
++    char *const argv[] = {
++	const_cast<char *>(helper), const_cast<char *>(op),
++	const_cast<char *>(opath), const_cast<char *>(path), NULL
++    };
++
++    /* AT_FDCWD must not re-anchor the source after the helper changes cwd. */
++    if (odirfd < 0 || dirfd < 0) {
++	errno = EBADF;
++	return -1;
++    }
++    if (pipe(pipefd) < 0)
++	return -1;
++    if (fcntl(pipefd[0], F_SETFD, FD_CLOEXEC) < 0 ||
++	fcntl(pipefd[1], F_SETFD, FD_CLOEXEC) < 0) {
++	error = errno;
++	close(pipefd[0]);
++	close(pipefd[1]);
++	errno = error;
++	return -1;
++    }
++
++    pid_t pid = fork();
++    if (pid == 0) {
++	/* The helper and its loader need the host root, not the transaction's
++	 * potentially empty --root. This never changes the parent's root/cwd. */
++	if (rootfd >= 0 && (fchdir(rootfd) < 0 || chroot(".") < 0)) {
++	    fsmZosReply(pipefd[1], -1, errno);
++	    _exit(0);
++	}
++	/* Duplicate above the protocol slots before remapping: any of the
++	 * original descriptors can itself be 3, 4 or 5 (or FD_CLOEXEC).
++	 * Do not run RPM/C++ runtime code in this multithreaded fork child. */
++	int source[3] = { odirfd, dirfd, pipefd[1] };
++	int copy[3];
++	for (int i = 0; i < 3; i++) {
++	    copy[i] = fcntl(source[i], F_DUPFD, 6);
++	    if (copy[i] < 0) {
++		fsmZosReply(pipefd[1], -1, errno);
++		_exit(0);
++	    }
++	}
++	for (int i = 0; i < 3; i++) {
++	    if (dup2(copy[i], i + 3) < 0) {
++		fsmZosReply(copy[2], -1, errno);
++		_exit(0);
++	    }
++	}
++	for (int i = 0; i < 3; i++)
++	    close(copy[i]);
++	execve(helper, argv, environ);
++	fsmZosReply(5, -1, errno);
++	_exit(0);
++    }
++
++    error = errno;
++    close(pipefd[1]);
++    if (pid < 0) {
++	close(pipefd[0]);
++	errno = error;
++	return -1;
++    }
++
++    char *p = reinterpret_cast<char *>(&result);
++    size_t left = sizeof(result);
++    error = 0;
++    while (left) {
++	ssize_t n = read(pipefd[0], p, left);
++	if (n < 0 && errno == EINTR)
++	    continue;
++	if (n <= 0) {
++	    error = n < 0 ? errno : EIO;
++	    break;
++	}
++	p += n;
++	left -= n;
++    }
++    close(pipefd[0]);
++
++    int status;
++    pid_t waited;
++    do {
++	waited = waitpid(pid, &status, 0);
++    } while (waited < 0 && errno == EINTR);
++    if (waited < 0)
++	error = errno;
++    else if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
++	error = EIO;
++    if (!error && !((result.rc == 0 && result.error == 0) ||
++		   (result.rc == -1 && result.error > 0)))
++	error = EIO;
++    if (error) {
++	errno = error;
++	return -1;
++    }
++    errno = result.rc < 0 ? result.error : saved;
++    return result.rc;
++}

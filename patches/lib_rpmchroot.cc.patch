@@ -1,0 +1,58 @@
+diff --git a/lib/rpmchroot.cc b/lib/rpmchroot.cc
+--- a/lib/rpmchroot.cc
++++ b/lib/rpmchroot.cc
+@@ -7,11 +7,17 @@
+ #include "rpmchroot.hh"
+ #include "rpmug.hh"
+ #include "debug.h"
++#ifdef __MVS__
++#include "fsm-zos.hh"
++#endif
+ 
+ struct rootState_s {
+     char *rootDir;
+     int chrootDone;
+     int cwd;
++#ifdef __MVS__
++    int hostRoot = -1;
++#endif
+ };
+ 
+ /* Process global chroot state */
+@@ -38,6 +44,12 @@ int rpmChrootSet(const char *rootDir)
+ 	close(rootState.cwd);
+ 	rootState.cwd = -1;
+     }
++#ifdef __MVS__
++    if (rootState.hostRoot >= 0) {
++	close(rootState.hostRoot);
++	rootState.hostRoot = -1;
++    }
++#endif
+ 
+     if (rootDir != NULL) {
+ 	rootState.rootDir = rstrdup(rootDir);
+@@ -46,6 +58,12 @@ int rpmChrootSet(const char *rootDir)
+ 	    rpmlog(RPMLOG_ERR, _("Unable to open current directory: %m\n"));
+ 	    rc = -1;
+ 	}
++#ifdef __MVS__
++	rootState.hostRoot = open("/", O_RDONLY | O_CLOEXEC);
++	if (rootState.hostRoot < 0) {
++	    rc = -1;
++	}
++#endif
+     }
+ 
+     /* Reset user and group caches */
+@@ -117,3 +135,10 @@ int rpmChrootDone(void)
+ {
+     return (rootState.chrootDone > 0);
+ }
++
++#ifdef __MVS__
++int fsmZosRootFd(void)
++{
++    return rootState.chrootDone ? rootState.hostRoot : -1;
++}
++#endif

@@ -103,5 +103,6 @@ cat <<EOF
 RPM_CONFIGDIR|set|PROJECT_ROOT/../../rpmconfig/rpmconfig/lib/rpm
 MAGIC|set|PROJECT_ROOT/../../file/file/share/misc/magic.mgc
 RPM_POPTEXEC_PATH|set|PROJECT_ROOT/bin
+RPM_FSM_HELPER|set|PROJECT_ROOT/libexec/rpm/rpm-fsm-helper
 EOF
 }

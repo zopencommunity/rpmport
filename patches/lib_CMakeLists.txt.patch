@@ -2,9 +2,24 @@ diff --git a/lib/CMakeLists.txt b/lib/CMakeLists.txt
 index 3674d0b..8951aad 100644
 --- a/lib/CMakeLists.txt
 +++ b/lib/CMakeLists.txt
-@@ -1,4 +1,4 @@
+@@ -1,8 +1,19 @@
 -add_library(librpm SHARED)
 +add_library(librpm STATIC)
  set_target_properties(librpm PROPERTIES
  	VERSION ${RPM_LIBVERSION}
  	SOVERSION ${RPM_SOVERSION}
+ )
+ 
++if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
++	target_sources(librpm PRIVATE fsm-zos.cc)
++	target_compile_definitions(librpm PRIVATE
++		RPM_FSM_HELPER="${CMAKE_INSTALL_FULL_LIBEXECDIR}/rpm/rpm-fsm-helper"
++	)
++	add_executable(rpm-fsm-helper fsm-zos-helper.cc)
++	install(TARGETS rpm-fsm-helper
++		DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/rpm)
++	add_dependencies(librpm rpm-fsm-helper)
++endif()
++
+ target_compile_definitions(librpm PRIVATE
+ 	LOCALEDIR="${CMAKE_INSTALL_FULL_LOCALEDIR}"
