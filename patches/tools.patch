@@ -13,7 +13,7 @@ index 18cf66d..4d05aae 100644
  if (HAVE_STRCHRNUL)
  	add_executable(rpmsort rpmsort.cc)
 diff --git a/tools/rpmuncompress.cc b/tools/rpmuncompress.cc
-index 7c731fb..8cc6530 100644
+index 7c731fb..2187c0f 100644
 --- a/tools/rpmuncompress.cc
 +++ b/tools/rpmuncompress.cc
 @@ -86,19 +86,6 @@ static const struct archiveType_s *getArchiver(const char *fn)
@@ -56,12 +56,13 @@ index 7c731fb..8cc6530 100644
  static char *doUntar(const char *fn)
  {
      const struct archiveType_s *at = NULL;
-@@ -237,6 +237,220 @@ exit:
+@@ -237,6 +237,267 @@ exit:
      return buf;
  }
  
 +#ifdef USE_LIBARCHIVE_UNCOMPRESS
 +#include <rpm/rpmfileutil.h>
++#include <rpm/rpmio.h>
 +#include <sys/stat.h>
 +
 +/*
@@ -87,6 +88,8 @@ index 7c731fb..8cc6530 100644
 +    struct archive *a = archive_read_new();
 +    archive_read_support_filter_all(a);
 +    archive_read_support_format_raw(a);
++    /* recognize empty (zero-length) streams as valid */
++    archive_read_support_format_empty(a);
 +
 +    if (archive_read_open_filename(a, fn, 64 * 1024) != ARCHIVE_OK) {
 +	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
@@ -95,8 +98,13 @@ index 7c731fb..8cc6530 100644
 +    }
 +
 +    struct archive_entry *entry;
-+    /* format_raw always produces exactly one synthetic entry */
-+    if (archive_read_next_header(a, &entry) != ARCHIVE_OK) {
++    int r = archive_read_next_header(a, &entry);
++    if (r == ARCHIVE_EOF) {
++	/* valid but empty decompressed stream: nothing to output */
++	archive_read_free(a);
++	return EXIT_SUCCESS;
++    }
++    if (r != ARCHIVE_OK) {
 +	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
 +	archive_read_free(a);
 +	return EXIT_FAILURE;
@@ -156,7 +164,8 @@ index 7c731fb..8cc6530 100644
 + *
 + * When -C dstpath is given and the archive has a single root directory,
 + * that root component is stripped (equivalent to tar --strip-components=1)
-+ * by rewriting the entry pathname before handing it to archive_write_disk.
++ * by rewriting the entry pathname (and hardlink target) before handing it
++ * to archive_write_disk.
 + */
 +static int doUntar_libarchive(const char *fn)
 +{
@@ -181,6 +190,12 @@ index 7c731fb..8cc6530 100644
 +    flags |= ARCHIVE_EXTRACT_PERM;
 +    flags |= ARCHIVE_EXTRACT_ACL;
 +    flags |= ARCHIVE_EXTRACT_FFLAGS;
++    /* refuse to extract through ".." or escaping directory symlinks;
++     * absolute entry paths are neutralized by stripping the leading
++     * slashes below (like tar does), so absolute user-supplied -C
++     * destinations keep working */
++    flags |= ARCHIVE_EXTRACT_SECURE_SYMLINKS;
++    flags |= ARCHIVE_EXTRACT_SECURE_NODOTDOT;
 +
 +    a = archive_read_new();
 +    archive_read_support_format_all(a);
@@ -195,7 +210,7 @@ index 7c731fb..8cc6530 100644
 +	goto out;
 +    }
 +
-+    if (dstpath && mkdir(dstpath, 0755) != 0 && errno != EEXIST) {
++    if (dstpath && rpmioMkpath(dstpath, 0755, getuid(), getgid()) != 0) {
 +	fprintf(stderr, "rpmuncompress: mkdir %s: %s\n", dstpath, strerror(errno));
 +	rc = EXIT_FAILURE;
 +	goto out;
@@ -214,6 +229,9 @@ index 7c731fb..8cc6530 100644
 +
 +	if (dstpath) {
 +	    const char *orig = archive_entry_pathname(entry);
++	    /* like tar, never honor absolute member paths */
++	    while (*orig == '/')
++		orig++;
 +	    const char *rel = orig;
 +	    /*
 +	     * Strip the single root directory component when the archive has
@@ -232,6 +250,35 @@ index 7c731fb..8cc6530 100644
 +	    rasprintf(&newpath, "%s/%s", dstpath, rel);
 +	    archive_entry_set_pathname(entry, newpath);
 +	    free(newpath);
++	    /* relocate hardlink targets the same way, so they point at
++	     * the extracted copy rather than the current working dir */
++	    const char *hl = archive_entry_hardlink(entry);
++	    if (hl) {
++		while (*hl == '/')
++		    hl++;
++		const char *hrel = hl;
++		if (sr) {
++		    size_t srlen = strlen(sr);
++		    if (strncmp(hl, sr, srlen) == 0 &&
++			(hl[srlen] == '/' || hl[srlen] == '\0'))
++			hrel = (hl[srlen] == '/') ? hl + srlen + 1 : hl + srlen;
++		}
++		if (*hrel != '\0') {
++		    char *newhl = NULL;
++		    rasprintf(&newhl, "%s/%s", dstpath, hrel);
++		    archive_entry_set_hardlink(entry, newhl);
++		    free(newhl);
++		}
++	    }
++	}
++
++	if (!dstpath) {
++	    /* like tar, strip leading slashes from absolute member paths */
++	    const char *orig = archive_entry_pathname(entry);
++	    while (*orig == '/')
++		orig++;
++	    if (orig != archive_entry_pathname(entry))
++		archive_entry_set_pathname(entry, orig);
 +	}
 +
 +	if (rpmIsVerbose())
@@ -245,7 +292,7 @@ index 7c731fb..8cc6530 100644
 +	    break;
 +	}
 +
-+	if (archive_entry_size(entry) > 0) {
++	if (archive_entry_size(entry) != 0) {
 +	    r = copy_data(a, ext);
 +	    if (r < ARCHIVE_OK)
 +		fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(ext));
@@ -277,19 +324,26 @@ index 7c731fb..8cc6530 100644
  int main(int argc, char *argv[])
  {
      int ec = EXIT_FAILURE;
-@@ -251,10 +465,27 @@ int main(int argc, char *argv[])
+@@ -251,10 +512,34 @@ int main(int argc, char *argv[])
  	goto exit;
      }
  
 +#ifdef USE_LIBARCHIVE_UNCOMPRESS
 +    /*
-+     * gem and car have no libarchive support: fall back to the original
-+     * shell-command path for those two formats only.
++     * Fall back to the original shell-command path for:
++     *   - gem and car: no libarchive support at all
++     *   - zip and 7zip without -x: the raw reader would only echo the
++     *     archive bytes to stdout, whereas the shell path extracts
++     *     them (e.g. unzip -u) as before
 +     */
 +    {
 +	const struct archiveType_s *at = getArchiver(arg);
-+	if (at && (at->compressed == COMPRESSED_GEM ||
-+		   at->compressed == COMPRESSED_CAR)) {
++	/* unclassifiable input (getArchiver() == NULL) keeps the original
++	 * behavior: the shell path fails with no command */
++	if (!at ||
++	    at->compressed == COMPRESSED_GEM ||
++	    at->compressed == COMPRESSED_CAR ||
++	    (!extract && at->extractable)) {
 +	    cmd = extract ? doUntar(arg) : doUncompress(arg);
 +	    goto shell;
 +	}
@@ -307,7 +361,7 @@ index 7c731fb..8cc6530 100644
  	if (rpmIsVerbose() || dryrun)
  	    fprintf(stderr, "%s\n", cmd);
  
-@@ -263,7 +494,7 @@ int main(int argc, char *argv[])
+@@ -263,7 +548,7 @@ int main(int argc, char *argv[])
  	    goto exit;
  	}
  
