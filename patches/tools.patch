@@ -1,0 +1,372 @@
+diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
+index 18cf66d..4d05aae 100644
+--- a/tools/CMakeLists.txt
++++ b/tools/CMakeLists.txt
+@@ -19,6 +19,9 @@ target_link_libraries(rpmbuild PRIVATE librpmbuild)
+ target_link_libraries(rpmspec PRIVATE librpmbuild)
+ target_link_libraries(rpmdeps PRIVATE librpmbuild)
+ target_link_libraries(rpmuncompress PRIVATE PkgConfig::LIBARCHIVE)
++if(WITH_LIBARCHIVE_UNCOMPRESS)
++	target_compile_definitions(rpmuncompress PRIVATE USE_LIBARCHIVE_UNCOMPRESS)
++endif()
+ 
+ if (HAVE_STRCHRNUL)
+ 	add_executable(rpmsort rpmsort.cc)
+diff --git a/tools/rpmuncompress.cc b/tools/rpmuncompress.cc
+index 7c731fb..2187c0f 100644
+--- a/tools/rpmuncompress.cc
++++ b/tools/rpmuncompress.cc
+@@ -86,19 +86,6 @@ static const struct archiveType_s *getArchiver(const char *fn)
+     return archiver;
+ }
+ 
+-static char *doUncompress(const char *fn)
+-{
+-    char *cmd = NULL;
+-    const struct archiveType_s *at = getArchiver(fn);
+-    if (at) {
+-	cmd = rpmExpand(at->setTZ ? "TZ=UTC " : "",
+-			at->cmd, " ", at->unpack, NULL);
+-	/* path must not be expanded */
+-	cmd = rstrscat(&cmd, " ", fn, NULL);
+-    }
+-    return cmd;
+-}
+-
+ /**
+  * Detect if an archive has a single top level entry, and it's a directory.
+  *
+@@ -156,6 +143,19 @@ afree:
+ 	return rootName;
+ }
+ 
++static char *doUncompress(const char *fn)
++{
++    char *cmd = NULL;
++    const struct archiveType_s *at = getArchiver(fn);
++    if (at) {
++	cmd = rpmExpand(at->setTZ ? "TZ=UTC " : "",
++			at->cmd, " ", at->unpack, NULL);
++	/* path must not be expanded */
++	cmd = rstrscat(&cmd, " ", fn, NULL);
++    }
++    return cmd;
++}
++
+ static char *doUntar(const char *fn)
+ {
+     const struct archiveType_s *at = NULL;
+@@ -237,6 +237,267 @@ exit:
+     return buf;
+ }
+ 
++#ifdef USE_LIBARCHIVE_UNCOMPRESS
++#include <rpm/rpmfileutil.h>
++#include <rpm/rpmio.h>
++#include <sys/stat.h>
++
++/*
++ * Decompress only (no -x): stream the raw decompressed bytes to stdout.
++ *
++ * archive_read_support_format_raw() treats the file as an opaque compressed
++ * stream and simply decompresses it, without parsing any archive format.
++ * archive_read_support_filter_all() auto-detects and handles gzip, bzip2,
++ * xz, lzma, lzip, lrzip, zstd, and plain compress.
++ *
++ * Gem and car formats are not supported by libarchive; their entries in
++ * archiveTypes[] are detected by getArchiver() and main() falls back to
++ * the original shell path for those two formats.
++ */
++static int doUncompress_libarchive(const char *fn)
++{
++    if (rpmIsVerbose() || dryrun)
++	fprintf(stderr, "rpmuncompress: decompressing %s\n", fn);
++
++    if (dryrun)
++	return EXIT_SUCCESS;
++
++    struct archive *a = archive_read_new();
++    archive_read_support_filter_all(a);
++    archive_read_support_format_raw(a);
++    /* recognize empty (zero-length) streams as valid */
++    archive_read_support_format_empty(a);
++
++    if (archive_read_open_filename(a, fn, 64 * 1024) != ARCHIVE_OK) {
++	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
++	archive_read_free(a);
++	return EXIT_FAILURE;
++    }
++
++    struct archive_entry *entry;
++    int r = archive_read_next_header(a, &entry);
++    if (r == ARCHIVE_EOF) {
++	/* valid but empty decompressed stream: nothing to output */
++	archive_read_free(a);
++	return EXIT_SUCCESS;
++    }
++    if (r != ARCHIVE_OK) {
++	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
++	archive_read_free(a);
++	return EXIT_FAILURE;
++    }
++
++    char buf[64 * 1024];
++    ssize_t nb;
++    int rc = EXIT_SUCCESS;
++
++    while ((nb = archive_read_data(a, buf, sizeof(buf))) > 0) {
++	if (fwrite(buf, 1, nb, stdout) != (size_t)nb) {
++	    fprintf(stderr, "rpmuncompress: write error: %s\n", strerror(errno));
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++    }
++    if (nb < 0) {
++	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
++	rc = EXIT_FAILURE;
++    }
++
++    archive_read_free(a);
++    return rc;
++}
++
++/*
++ * copy_data() and doUntar_libarchive() follow the canonical libarchive
++ * "A Complete Extractor" example:
++ * https://github.com/libarchive/libarchive/wiki/Examples#a-complete-extractor
++ */
++static int copy_data(struct archive *ar, struct archive *aw)
++{
++    const void *buff;
++    size_t size;
++    la_int64_t offset;
++    int r;
++
++    for (;;) {
++	r = archive_read_data_block(ar, &buff, &size, &offset);
++	if (r == ARCHIVE_EOF)
++	    return ARCHIVE_OK;
++	if (r < ARCHIVE_OK)
++	    return r;
++	r = archive_write_data_block(aw, buff, size, offset);
++	if (r < ARCHIVE_OK) {
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(aw));
++	    return r;
++	}
++    }
++}
++
++/*
++ * Extract an archive to disk (with -x).
++ *
++ * archive_read_support_format_all() + archive_read_support_filter_all()
++ * covers tar+any-compression, zip, and 7zip natively.
++ *
++ * When -C dstpath is given and the archive has a single root directory,
++ * that root component is stripped (equivalent to tar --strip-components=1)
++ * by rewriting the entry pathname (and hardlink target) before handing it
++ * to archive_write_disk.
++ */
++static int doUntar_libarchive(const char *fn)
++{
++    char *sr = dstpath ? singleRoot(fn) : NULL;
++    struct archive *a;
++    struct archive *ext;
++    struct archive_entry *entry;
++    int flags;
++    int r;
++    int rc = EXIT_SUCCESS;
++
++    if (rpmIsVerbose() || dryrun)
++	fprintf(stderr, "rpmuncompress: extracting %s%s%s\n", fn,
++		dstpath ? " -> " : "", dstpath ? dstpath : "");
++
++    if (dryrun) {
++	free(sr);
++	return EXIT_SUCCESS;
++    }
++
++    flags = ARCHIVE_EXTRACT_TIME;
++    flags |= ARCHIVE_EXTRACT_PERM;
++    flags |= ARCHIVE_EXTRACT_ACL;
++    flags |= ARCHIVE_EXTRACT_FFLAGS;
++    /* refuse to extract through ".." or escaping directory symlinks;
++     * absolute entry paths are neutralized by stripping the leading
++     * slashes below (like tar does), so absolute user-supplied -C
++     * destinations keep working */
++    flags |= ARCHIVE_EXTRACT_SECURE_SYMLINKS;
++    flags |= ARCHIVE_EXTRACT_SECURE_NODOTDOT;
++
++    a = archive_read_new();
++    archive_read_support_format_all(a);
++    archive_read_support_filter_all(a);
++    ext = archive_write_disk_new();
++    archive_write_disk_set_options(ext, flags);
++    archive_write_disk_set_standard_lookup(ext);
++
++    if (archive_read_open_filename(a, fn, 10240) != ARCHIVE_OK) {
++	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
++	rc = EXIT_FAILURE;
++	goto out;
++    }
++
++    if (dstpath && rpmioMkpath(dstpath, 0755, getuid(), getgid()) != 0) {
++	fprintf(stderr, "rpmuncompress: mkdir %s: %s\n", dstpath, strerror(errno));
++	rc = EXIT_FAILURE;
++	goto out;
++    }
++
++    for (;;) {
++	r = archive_read_next_header(a, &entry);
++	if (r == ARCHIVE_EOF)
++	    break;
++	if (r < ARCHIVE_OK)
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(a));
++	if (r < ARCHIVE_WARN) {
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++
++	if (dstpath) {
++	    const char *orig = archive_entry_pathname(entry);
++	    /* like tar, never honor absolute member paths */
++	    while (*orig == '/')
++		orig++;
++	    const char *rel = orig;
++	    /*
++	     * Strip the single root directory component when the archive has
++	     * one, mirroring tar --strip-components=1.
++	     */
++	    if (sr) {
++		size_t srlen = strlen(sr);
++		if (strncmp(orig, sr, srlen) == 0 &&
++		    (orig[srlen] == '/' || orig[srlen] == '\0'))
++		    rel = (orig[srlen] == '/') ? orig + srlen + 1 : orig + srlen;
++	    }
++	    /* skip the root dir entry itself after stripping */
++	    if (*rel == '\0')
++		continue;
++	    char *newpath = NULL;
++	    rasprintf(&newpath, "%s/%s", dstpath, rel);
++	    archive_entry_set_pathname(entry, newpath);
++	    free(newpath);
++	    /* relocate hardlink targets the same way, so they point at
++	     * the extracted copy rather than the current working dir */
++	    const char *hl = archive_entry_hardlink(entry);
++	    if (hl) {
++		while (*hl == '/')
++		    hl++;
++		const char *hrel = hl;
++		if (sr) {
++		    size_t srlen = strlen(sr);
++		    if (strncmp(hl, sr, srlen) == 0 &&
++			(hl[srlen] == '/' || hl[srlen] == '\0'))
++			hrel = (hl[srlen] == '/') ? hl + srlen + 1 : hl + srlen;
++		}
++		if (*hrel != '\0') {
++		    char *newhl = NULL;
++		    rasprintf(&newhl, "%s/%s", dstpath, hrel);
++		    archive_entry_set_hardlink(entry, newhl);
++		    free(newhl);
++		}
++	    }
++	}
++
++	if (!dstpath) {
++	    /* like tar, strip leading slashes from absolute member paths */
++	    const char *orig = archive_entry_pathname(entry);
++	    while (*orig == '/')
++		orig++;
++	    if (orig != archive_entry_pathname(entry))
++		archive_entry_set_pathname(entry, orig);
++	}
++
++	if (rpmIsVerbose())
++	    fprintf(stderr, "  %s\n", archive_entry_pathname(entry));
++
++	r = archive_write_header(ext, entry);
++	if (r < ARCHIVE_OK)
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(ext));
++	if (r < ARCHIVE_WARN) {
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++
++	if (archive_entry_size(entry) != 0) {
++	    r = copy_data(a, ext);
++	    if (r < ARCHIVE_OK)
++		fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(ext));
++	    if (r < ARCHIVE_WARN) {
++		rc = EXIT_FAILURE;
++		break;
++	    }
++	}
++
++	r = archive_write_finish_entry(ext);
++	if (r < ARCHIVE_OK)
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(ext));
++	if (r < ARCHIVE_WARN) {
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++    }
++
++out:
++    archive_read_close(a);
++    archive_read_free(a);
++    archive_write_close(ext);
++    archive_write_free(ext);
++    free(sr);
++    return rc;
++}
++#endif /* USE_LIBARCHIVE_UNCOMPRESS */
++
+ int main(int argc, char *argv[])
+ {
+     int ec = EXIT_FAILURE;
+@@ -251,10 +512,34 @@ int main(int argc, char *argv[])
+ 	goto exit;
+     }
+ 
++#ifdef USE_LIBARCHIVE_UNCOMPRESS
++    /*
++     * Fall back to the original shell-command path for:
++     *   - gem and car: no libarchive support at all
++     *   - zip and 7zip without -x: the raw reader would only echo the
++     *     archive bytes to stdout, whereas the shell path extracts
++     *     them (e.g. unzip -u) as before
++     */
++    {
++	const struct archiveType_s *at = getArchiver(arg);
++	/* unclassifiable input (getArchiver() == NULL) keeps the original
++	 * behavior: the shell path fails with no command */
++	if (!at ||
++	    at->compressed == COMPRESSED_GEM ||
++	    at->compressed == COMPRESSED_CAR ||
++	    (!extract && at->extractable)) {
++	    cmd = extract ? doUntar(arg) : doUncompress(arg);
++	    goto shell;
++	}
++    }
++    ec = extract ? doUntar_libarchive(arg) : doUncompress_libarchive(arg);
++    goto exit;
++#endif
++
+     cmd = extract ? doUntar(arg) : doUncompress(arg);
+-    if (cmd) {
+-	FILE *inp = NULL;
+ 
++shell:
++    if (cmd) {
+ 	if (rpmIsVerbose() || dryrun)
+ 	    fprintf(stderr, "%s\n", cmd);
+ 
+@@ -263,7 +548,7 @@ int main(int argc, char *argv[])
+ 	    goto exit;
+ 	}
+ 
+-	inp = popen(cmd, "r");
++	FILE *inp = popen(cmd, "r");
+ 	if (inp) {
+ 	    int status, c;
+ 	    while ((c = fgetc(inp)) != EOF)
