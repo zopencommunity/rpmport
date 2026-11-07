@@ -1,0 +1,452 @@
+diff --git a/tools/rpmuncompress.cc b/tools/rpmuncompress.cc
+index 7c731fb..7554670 100644
+--- a/tools/rpmuncompress.cc
++++ b/tools/rpmuncompress.cc
+@@ -86,19 +86,6 @@ static const struct archiveType_s *getArchiver(const char *fn)
+     return archiver;
+ }
+ 
+-static char *doUncompress(const char *fn)
+-{
+-    char *cmd = NULL;
+-    const struct archiveType_s *at = getArchiver(fn);
+-    if (at) {
+-	cmd = rpmExpand(at->setTZ ? "TZ=UTC " : "",
+-			at->cmd, " ", at->unpack, NULL);
+-	/* path must not be expanded */
+-	cmd = rstrscat(&cmd, " ", fn, NULL);
+-    }
+-    return cmd;
+-}
+-
+ /**
+  * Detect if an archive has a single top level entry, and it's a directory.
+  *
+@@ -156,6 +143,19 @@ afree:
+ 	return rootName;
+ }
+ 
++static char *doUncompress(const char *fn)
++{
++    char *cmd = NULL;
++    const struct archiveType_s *at = getArchiver(fn);
++    if (at) {
++	cmd = rpmExpand(at->setTZ ? "TZ=UTC " : "",
++			at->cmd, " ", at->unpack, NULL);
++	/* path must not be expanded */
++	cmd = rstrscat(&cmd, " ", fn, NULL);
++    }
++    return cmd;
++}
++
+ static char *doUntar(const char *fn)
+ {
+     const struct archiveType_s *at = NULL;
+@@ -237,6 +237,331 @@ exit:
+     return buf;
+ }
+ 
++#include <rpm/rpmfileutil.h>
++#include <rpm/rpmio.h>
++#include <sys/stat.h>
++/*
++ * Decompress only (no -x): stream the raw decompressed bytes to stdout.
++ *
++ * archive_read_support_format_raw() treats the file as an opaque compressed
++ * stream and simply decompresses it, without parsing any archive format.
++ *
++ * Exactly ONE filter (matching the detected format) is registered: the
++ * previous tools (gzip -dc, xz -dc ...) also removed only a single
++ * compression layer, whereas automatic filter stacking would happily
++ * decompress foo.gz.gz twice.
++ *
++ * Returns -1 when the input needs the shell fallback (e.g. more than one
++ * compression layer detected, which the shell tools handle one layer at
++ * a time).
++ */
++static int doUncompress_libarchive(const char *fn, const struct archiveType_s *at)
++{
++    if (rpmIsVerbose() || dryrun)
++	fprintf(stderr, "rpmuncompress: decompressing %s\n", fn);
++
++    if (dryrun)
++	return EXIT_SUCCESS;
++
++    struct archive *a = archive_read_new();
++    /* register only the filter matching the detected type so exactly
++     * one compression layer is removed */
++    switch (at->compressed) {
++    case COMPRESSED_BZIP2:
++	archive_read_support_filter_bzip2(a);
++	break;
++    case COMPRESSED_XZ:
++	archive_read_support_filter_xz(a);
++	break;
++    case COMPRESSED_LZMA:
++	archive_read_support_filter_lzma(a);
++	break;
++    case COMPRESSED_ZSTD:
++	archive_read_support_filter_zstd(a);
++	break;
++    case COMPRESSED_LZIP:
++	archive_read_support_filter_lzip(a);
++	break;
++    default:
++	/* COMPRESSED_OTHER: gzip (1f8b) or compress (1f9d) */
++	archive_read_support_filter_gzip(a);
++	archive_read_support_filter_compress(a);
++	break;
++    }
++    archive_read_support_format_raw(a);
++    /* recognize empty (zero-length) streams as valid */
++    archive_read_support_format_empty(a);
++
++    if (archive_read_open_filename(a, fn, 64 * 1024) != ARCHIVE_OK) {
++	/* let the shell tool decide: it fails on genuinely corrupt
++	 * input, and peels one layer of stacked same-type streams */
++	archive_read_free(a);
++	return -1;
++    }
++
++    struct archive_entry *entry;
++    int r = archive_read_next_header(a, &entry);
++    /* exactly one decompression filter must have engaged: more
++     * means stacked layers (e.g. foo.gz.gz), which the shell tools
++     * peel one at a time like before; none means the recognized
++     * signature did not decode, which the shell tools reject */
++    int fc = archive_filter_count(a);
++    if (fc > 2) {
++	archive_read_free(a);
++	return -1;
++    }
++    if (fc < 2) {
++	fprintf(stderr, "rpmuncompress: %s: unrecognized compressed data\n", fn);
++	archive_read_free(a);
++	return EXIT_FAILURE;
++    }
++    if (r == ARCHIVE_EOF) {
++	/* valid but empty decompressed stream: nothing to output */
++	archive_read_free(a);
++	return EXIT_SUCCESS;
++    }
++    if (r != ARCHIVE_OK) {
++	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
++	archive_read_free(a);
++	return EXIT_FAILURE;
++    }
++
++    char buf[64 * 1024];
++    ssize_t nb;
++    int rc = EXIT_SUCCESS;
++
++    while ((nb = archive_read_data(a, buf, sizeof(buf))) > 0) {
++	if (fwrite(buf, 1, nb, stdout) != (size_t)nb) {
++	    fprintf(stderr, "rpmuncompress: write error: %s\n", strerror(errno));
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++    }
++    if (nb < 0) {
++	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
++	rc = EXIT_FAILURE;
++    }
++
++    archive_read_free(a);
++    return rc;
++}
++
++/*
++ * copy_data() and doUntar_libarchive() follow the canonical libarchive
++ * "A Complete Extractor" example:
++ * https://github.com/libarchive/libarchive/wiki/Examples#a-complete-extractor
++ */
++static int copy_data(struct archive *ar, struct archive *aw)
++{
++    const void *buff;
++    size_t size;
++    int64_t offset;
++    int r;
++
++    for (;;) {
++	r = archive_read_data_block(ar, &buff, &size, &offset);
++	if (r == ARCHIVE_EOF)
++	    return ARCHIVE_OK;
++	if (r != ARCHIVE_OK)
++	    return r;
++	r = archive_write_data_block(aw, buff, size, offset);
++	if (r != ARCHIVE_OK) {
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(aw));
++	    return r;
++	}
++    }
++}
++
++/*
++ * Extract an archive to disk (with -x).
++ *
++ * archive_read_support_format_all() + archive_read_support_filter_all()
++ * covers tar+any-compression, zip, and 7zip natively.
++ *
++ * When -C dstpath is given and the archive has a single root directory,
++ * that root component is stripped (equivalent to tar --strip-components=1)
++ * by rewriting the entry pathname (and hardlink target) before handing it
++ * to archive_write_disk.
++ */
++static int doUntar_libarchive(const char *fn, const struct archiveType_s *at)
++{
++    char *sr = dstpath ? singleRoot(fn) : NULL;
++    char *dest = NULL;		/* canonicalized -C destination */
++    struct archive *a;
++    struct archive *ext;
++    struct archive_entry *entry;
++    int r;
++    int rc = EXIT_SUCCESS;
++
++    if (rpmIsVerbose() || dryrun)
++	fprintf(stderr, "rpmuncompress: extracting %s%s%s\n", fn,
++		dstpath ? " -> " : "", dstpath ? dstpath : "");
++
++    if (dryrun) {
++	free(sr);
++	return EXIT_SUCCESS;
++    }
++
++    /* zip timestamps are stored as UTC, like the old TZ=UTC unzip */
++    if (at->setTZ) {
++	setenv("TZ", "UTC", 1);
++	tzset();
++    }
++
++    a = archive_read_new();
++    archive_read_support_format_all(a);
++    archive_read_support_filter_all(a);
++    ext = archive_write_disk_new();
++    archive_write_disk_set_options(ext,
++	ARCHIVE_EXTRACT_TIME |
++	ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS | ARCHIVE_EXTRACT_XATTR |
++	ARCHIVE_EXTRACT_SECURE_SYMLINKS | ARCHIVE_EXTRACT_SECURE_NODOTDOT |
++	ARCHIVE_EXTRACT_SAFE_WRITES);
++    archive_write_disk_set_standard_lookup(ext);
++
++    /* never overwrite our own input (an uncompressed tar containing
++     * a member of its own name; link entries are covered too) */
++    {
++	struct stat st;
++	if (stat(fn, &st) == 0)
++	    archive_write_disk_set_skip_file(ext, st.st_dev, st.st_ino);
++    }
++
++    if (archive_read_open_filename(a, fn, 10240) != ARCHIVE_OK) {
++	fprintf(stderr, "rpmuncompress: %s: %s\n", fn, archive_error_string(a));
++	rc = EXIT_FAILURE;
++	goto out;
++    }
++
++    if (dstpath) {
++	if (rpmioMkpath(dstpath, 0755, getuid(), getgid()) != 0) {
++	    fprintf(stderr, "rpmuncompress: mkdir %s: %s\n", dstpath, strerror(errno));
++	    rc = EXIT_FAILURE;
++	    goto out;
++	}
++	dest = realpath(dstpath, NULL);
++	if (dest == NULL) {
++	    fprintf(stderr, "rpmuncompress: realpath %s: %s\n", dstpath, strerror(errno));
++	    rc = EXIT_FAILURE;
++	    goto out;
++	}
++    }
++
++    for (;;) {
++	r = archive_read_next_header(a, &entry);
++	if (r == ARCHIVE_EOF)
++	    break;
++	if (r < ARCHIVE_WARN) {
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(a));
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++
++	if (dstpath) {
++	    /* strip the single root directory (tar --strip-components=1)
++	     * and prefix the destination */
++	    const char *orig = archive_entry_pathname(entry);
++	    while (*orig == '/')
++		orig++;
++	    const char *rel = orig;
++	    if (sr) {
++		size_t srlen = strlen(sr);
++		if (strncmp(orig, sr, srlen) == 0 &&
++		    (orig[srlen] == '/' || orig[srlen] == '\0'))
++		    rel = (orig[srlen] == '/') ? orig + srlen + 1 : orig + srlen;
++	    }
++	    if (*rel == '\0')
++		continue;	/* the root dir entry itself */
++	    char *newpath = NULL;
++	    rasprintf(&newpath, "%s/%s", dest, rel);
++	    archive_entry_set_pathname(entry, newpath);
++	    free(newpath);
++	    /* relocate hardlink targets into the destination too,
++	     * stripping the same root component */
++	    const char *hl = archive_entry_hardlink(entry);
++	    if (hl) {
++		while (*hl == '/')
++		    hl++;
++		const char *hrel = hl;
++		if (sr) {
++		    size_t srlen = strlen(sr);
++		    if (strncmp(hl, sr, srlen) == 0 &&
++			(hl[srlen] == '/' || hl[srlen] == '\0'))
++			hrel = (hl[srlen] == '/') ? hl + srlen + 1 : hl + srlen;
++		}
++		if (*hrel == '\0')
++		    continue;	/* target reduced to nothing: skip */
++		char *newhl = NULL;
++		rasprintf(&newhl, "%s/%s", dest, hrel);
++		archive_entry_set_hardlink(entry, newhl);
++		free(newhl);
++	    }
++	} else {
++	    /* like tar: strip leading slashes from absolute member and
++	     * hardlink paths, never honor them */
++	    const char *orig = archive_entry_pathname(entry);
++	    while (*orig == '/')
++		orig++;
++	    if (*orig == '\0')
++		continue;
++	    if (orig != archive_entry_pathname(entry))
++		archive_entry_set_pathname(entry, orig);
++	    const char *hl = archive_entry_hardlink(entry);
++	    if (hl) {
++		while (*hl == '/')
++		    hl++;
++		if (*hl != '\0')
++		    archive_entry_set_hardlink(entry, hl);
++	    }
++	}
++
++	/* zip: like unzip -u, keep existing files that are the same age
++	 * or newer than the archived copy */
++	if (at->compressed == COMPRESSED_ZIP) {
++	    struct stat zst;
++	    if (stat(archive_entry_pathname(entry), &zst) == 0 &&
++		!S_ISDIR(zst.st_mode) &&
++		zst.st_mtime >= archive_entry_mtime(entry))
++		continue;
++	}
++
++	if (rpmIsVerbose())
++	    fprintf(stderr, "  %s\n", archive_entry_pathname(entry));
++
++	r = archive_write_header(ext, entry);
++	if (r < ARCHIVE_OK)
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(ext));
++	if (r < ARCHIVE_WARN) {
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++
++	r = copy_data(a, ext);
++	if (r < ARCHIVE_OK) {
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(a));
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++
++	r = archive_write_finish_entry(ext);
++	if (r < ARCHIVE_OK)
++	    fprintf(stderr, "rpmuncompress: %s\n", archive_error_string(ext));
++	if (r < ARCHIVE_WARN) {
++	    rc = EXIT_FAILURE;
++	    break;
++	}
++    }
++
++out:
++    archive_read_close(a);
++    archive_read_free(a);
++    archive_write_close(ext);
++    archive_write_free(ext);
++    free(sr);
++    free(dest);
++    return rc;
++}
++
+ int main(int argc, char *argv[])
+ {
+     int ec = EXIT_FAILURE;
+@@ -251,10 +576,64 @@ int main(int argc, char *argv[])
+ 	goto exit;
+     }
+ 
++    /*
++     * Fall back to the original shell-command path for:
++     *   - gem and car: no libarchive support at all
++     *   - lrzip: libarchive's filter is program-based (it always
++     *     launches an external "lrzip"), so keep the shell path to
++     *     honor the configured %{__lrzip} macro
++     *   - uncompressed input without -x: must be copied byte-for-byte
++     *     (cat); libarchive filters could alter the content
++     *   - legacy gzip-family magics libarchive does not know (old
++     *     gzip 1f9e, pack 1f1e, SCO lzh 1fa0): keep gzip -dc
++     *
++     * zip and 7zip are extracted natively whether or not -x is
++     * given, like the previous unzip -u / 7z x -y invocations
++     */
++    {
++	const struct archiveType_s *at = getArchiver(arg);
++	/* unclassifiable input (getArchiver() == NULL) keeps the original
++	 * behavior: the shell path fails with no command */
++	int shell = !at ||
++	    at->compressed == COMPRESSED_GEM ||
++	    at->compressed == COMPRESSED_CAR ||
++	    at->compressed == COMPRESSED_LRZIP ||
++	    (!extract && at->compressed == COMPRESSED_NOT);
++	if (!shell && at->compressed == COMPRESSED_OTHER) {
++	    unsigned char magic[2] = { 0 };
++	    FILE *mf = fopen(arg, "rb");
++	    if (!mf || fread(magic, 1, 2, mf) != 2 ||
++		!((magic[0] == 0x1f && magic[1] == 0x8b) ||	/* gzip */
++		  (magic[0] == 0x1f && magic[1] == 0x9d)))	/* compress */
++		shell = 1;
++	    if (mf)
++		fclose(mf);
++	}
++	if (shell) {
++	    cmd = extract ? doUntar(arg) : doUncompress(arg);
++	    goto shell;
++	}
++    }
++    /* zip and 7zip extract natively even without -x (the previous
++     * unzip -u / 7z x -y shell invocations extracted too) */
++    {
++	const struct archiveType_s *at = getArchiver(arg);
++	ec = (extract || at->extractable)
++	    ? doUntar_libarchive(arg, at)
++	    : doUncompress_libarchive(arg, at);
++    }
++    if (ec == -1) {
++	/* multiple compression layers: let the shell tools peel exactly
++	 * one layer like before */
++	cmd = extract ? doUntar(arg) : doUncompress(arg);
++	goto shell;
++    }
++    goto exit;
++
+     cmd = extract ? doUntar(arg) : doUncompress(arg);
+-    if (cmd) {
+-	FILE *inp = NULL;
+ 
++shell:
++    if (cmd) {
+ 	if (rpmIsVerbose() || dryrun)
+ 	    fprintf(stderr, "%s\n", cmd);
+ 
+@@ -263,7 +642,7 @@ int main(int argc, char *argv[])
+ 	    goto exit;
+ 	}
+ 
+-	inp = popen(cmd, "r");
++	FILE *inp = popen(cmd, "r");
+ 	if (inp) {
+ 	    int status, c;
+ 	    while ((c = fgetc(inp)) != EOF)
