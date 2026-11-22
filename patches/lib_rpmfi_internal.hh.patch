@@ -1,13 +1,18 @@
 diff --git a/lib/rpmfi_internal.hh b/lib/rpmfi_internal.hh
-index 14483a5..0b056e4 100644
+index 14483a5..01a5f81 100644
 --- a/lib/rpmfi_internal.hh
 +++ b/lib/rpmfi_internal.hh
-@@ -123,5 +123,18 @@ rpmfiles rpmfiFiles(rpmfi fi);
+@@ -123,5 +123,23 @@ rpmfiles rpmfiFiles(rpmfi fi);
  RPM_GNUC_INTERNAL
  rpmfi rpmfilesFindPrefix(rpmfiles fi, const char *pfx);
  
 +RPM_GNUC_INTERNAL
 +uint32_t rpmfiFileCCSID(rpmfi fi, int ix);
++
++RPM_GNUC_INTERNAL
++int rpmfiFileHasTagData(rpmfi fi, int ix);
++
++#define rpmfiFHasTagData(_fi) rpmfiFileHasTagData((_fi), rpmfiFX((_fi)))
 +
 +RPM_GNUC_INTERNAL
 +uint8_t rpmfiFileTxtFlag(rpmfi fi, int ix);

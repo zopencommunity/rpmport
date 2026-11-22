@@ -1,5 +1,5 @@
 diff --git a/lib/rpmfi.cc b/lib/rpmfi.cc
-index e5e0666..427ec84 100644
+index e5e0666..7881e51 100644
 --- a/lib/rpmfi.cc
 +++ b/lib/rpmfi.cc
 @@ -50,8 +50,17 @@ struct rpmfi_s {
@@ -206,7 +206,7 @@ index e5e0666..427ec84 100644
  
      rpm_loff_t left = rpmfiFSize(fi);
      const unsigned char * fidigest = NULL;
-@@ -2448,7 +2560,51 @@ char * rpmfileStrerror(int rc)
+@@ -2448,7 +2560,61 @@ char * rpmfileStrerror(int rc)
  	}
      } else {
  	rasprintf(&msg, _("%s: (error 0x%x)"), prefix, rc);
@@ -238,6 +238,16 @@ index e5e0666..427ec84 100644
 +}
 +
 +/* Also provide accessors for the numeric/flag arrays you mentioned */
++int
++rpmfiFileHasTagData(rpmfi fi, int ix)
++{
++    if (fi == NULL || fi->files == NULL)
++        return 0;
++    if (ix < 0 || ix >= (int)rpmfilesFC(fi->files))
++        return 0;
++    return fi->files->fccsids != NULL;
++}
++
 +uint32_t
 +rpmfiFileGenValue(rpmfi fi, int ix)
 +{
