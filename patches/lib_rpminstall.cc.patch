@@ -1,0 +1,29 @@
+diff --git a/lib/rpminstall.cc b/lib/rpminstall.cc
+index 88eba03..ca9b8f5 100644
+--- a/lib/rpminstall.cc
++++ b/lib/rpminstall.cc
+@@ -20,6 +20,11 @@
+ #include <rpm/rpmlog.h>
+ #include <rpm/rpmfileutil.h>
+ 
++#if defined(__MVS__)
++/* zoslib: temp files holding downloaded packages are binary (see build/pack.cc) */
++#include <zos.h>
++#endif
++
+ #include "rpmgi.hh"
+ #include "manifest.hh"
+ #include "debug.h"
+@@ -423,6 +428,12 @@ static std::pair<int, std::string> getFile(rpmts ts, const std::string & arg)
+ 
+ 	tfd = rpmMkTempFile(rpmtsRootDir(ts), &tfn);
+ 	if (tfn) {
++#if defined(__MVS__)
++	    /* Downloaded packages are binary; keep the binary tag on the
++	     * staging file instead of zoslib's default 819 text tag. The
++	     * tag persists on the file across the close/reopen by urlGetFile. */
++	    (void) __setfdbinary(Fileno(tfd));
++#endif
+ 	    Fclose(tfd);
+ 	    rc = urlGetFile(fileURL, tfn);
+ 	    fn = tfn;

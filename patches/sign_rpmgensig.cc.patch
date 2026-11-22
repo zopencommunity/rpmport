@@ -1,0 +1,28 @@
+diff --git a/sign/rpmgensig.cc b/sign/rpmgensig.cc
+index b689d69..e72f6b2 100644
+--- a/sign/rpmgensig.cc
++++ b/sign/rpmgensig.cc
+@@ -21,6 +21,11 @@
+ #include <rpm/rpmbase64.h>
+ #include <rpm/rpmlib.h>			/* RPMSIGTAG & related */
+ #include <rpm/rpmmacro.h>
++
++#if defined(__MVS__)
++/* zoslib: temp files holding re-signed packages are binary (see build/pack.cc) */
++#include <zos.h>
++#endif
+ #include <rpm/rpmpgp.h>
+ #include <rpm/rpmsign.h>
+ #include <rpm/rpmfileutil.h>	/* rpmMkTemp() */
+@@ -836,6 +841,11 @@ static int rpmSign(const char *rpm, int deleting, int flags)
+ 	    rpmlog(RPMLOG_ERR, _("rpmMkTemp failed: %s\n"), trpm);
+ 	    goto exit;
+ 	}
++#if defined(__MVS__)
++	/* The temp file becomes the final package after rename; keep the
++	 * binary tag instead of zoslib's default 819 text tag. */
++	(void) __setfdbinary(Fileno(ofd));
++#endif
+ 
+ 	/* Copy lead from original */
+ 	if (!(Fread(lbuf, 1, RPMLEAD_SIZE, fd) == RPMLEAD_SIZE &&
