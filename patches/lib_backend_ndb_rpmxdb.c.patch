@@ -1,20 +1,51 @@
 diff --git a/lib/backend/ndb/rpmxdb.c b/lib/backend/ndb/rpmxdb.c
-index 26085f7..a1c8f65 100644
+index 26085f7..8ce953f 100644
 --- a/lib/backend/ndb/rpmxdb.c
 +++ b/lib/backend/ndb/rpmxdb.c
-@@ -25,6 +25,11 @@
+@@ -18,13 +18,41 @@
+ #define htole32(x) OSSwapHostToLittleInt32(x)
+ #define le32toh(x) OSSwapLittleToHostInt32(x)
+ #else
+-#include <endian.h>
++// #include <endian.h>
++#include <sys/endian.h>
+ #endif /* __APPLE__ */
+ #include <libgen.h>
+ #include <dirent.h>
  
  #include "rpmxdb.h"
  
-+#if defined(__MVS__)
-+/* zoslib: tag created database files as binary (see build/pack.cc) */
++#ifdef __MVS__
++#include <stdint.h>
 +#include <zos.h>
++#define htole16(x) __bswap16(x)
++#define le16toh(x) __bswap16(x)
++#define htole32(x) __bswap32(x)
++#define le32toh(x) __bswap32(x)
++#define htole64(x) __bswap64(x)
++#define le64toh(x) __bswap64(x)
++
++static __inline uint16_t __bswap16(uint16_t __x)
++{
++	return __x<<8 | __x>>8;
++}
++
++static __inline uint32_t __bswap32(uint32_t __x)
++{
++	return __x>>24 | __x>>8&0xff00 | __x<<8&0xff0000 | __x<<24;
++}
++
++static __inline uint64_t __bswap64(uint64_t __x)
++{
++	return __bswap32(__x)+0ULL<<32 | __bswap32(__x>>32);
++}
++
 +#endif
 +
  struct rpmxdb_s {
      rpmpkgdb pkgdb;             /* main database */
      char *filename;
-@@ -591,6 +596,11 @@ int rpmxdbOpen(rpmxdb *xdbp, rpmpkgdb pkgdb, const char *filename, int flags, in
+@@ -591,6 +619,11 @@ int rpmxdbOpen(rpmxdb *xdbp, rpmpkgdb pkgdb, const char *filename, int flags, in
  	free(xdb);
  	return RPMRC_FAIL;
      }
