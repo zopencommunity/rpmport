@@ -1,0 +1,14 @@
+diff --git a/tools/rpm2archive.cc b/tools/rpm2archive.cc
+index 77467b17c..672fcfa0f 100644
+--- a/tools/rpm2archive.cc
++++ b/tools/rpm2archive.cc
+@@ -263,7 +263,8 @@ static int process_package(rpmts ts, const char * filename)
+ 			    archive_error_string(a), archive_errno(a));
+ 	    break;
+ 	}
+-	if (S_ISREG(archive_entry_mode(entry)) && rpmfiArchiveHasContent(fi)) {
++	if ((archive_entry_mode(entry) & AE_IFMT) == AE_IFREG &&
++		    rpmfiArchiveHasContent(fi)) {
+ 	    if (write_file_content(a, buf, fi)) {
+ 		break;
+ 	    }
