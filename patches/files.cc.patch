@@ -1,5 +1,5 @@
 diff --git a/build/files.cc b/build/files.cc
-index 8689ae3..b674efe 100644
+index 8689ae3..f42dec6 100644
 --- a/build/files.cc
 +++ b/build/files.cc
 @@ -24,7 +24,7 @@
@@ -38,7 +38,7 @@ index 8689ae3..b674efe 100644
  	    /* file flags */
  	    flp[1].flags |= flp->flags;	
  
-@@ -1185,6 +1189,14 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
+@@ -1185,6 +1189,20 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
  	    rpm_off_t rsize32 = (rpm_off_t)flp->fl_size;
  	    headerPutUint32(h, RPMTAG_FILESIZES, &rsize32, 1);
  	}
@@ -49,11 +49,17 @@ index 8689ae3..b674efe 100644
 +	allGenValues.push_back((uint32_t)flp->fl_genvalue);
 +	allCCSIDs.push_back(flp->fl_st.st_tag.ft_ccsid);
 +	allTextFlags.push_back((uint16_t)(flp->fl_st.st_tag.ft_txtflag ? 1 : 0));
++#ifdef __MVS__
++	if (S_ISREG(flp->fl_mode) && flp->fl_st.st_tag.ft_ccsid == FT_UNTAGGED)
++	    rpmlog(RPMLOG_WARNING,
++		   _("file %s is untagged; its encoding is unspecified (consider 'chtag')\n"),
++		   flp->cpioPath);
++#endif
 +
  	/* Excludes and dupes have been filtered out by now. */
  	if (isLinkable(flp->fl_mode)) {
  	    if (flp->fl_nlink == 1 || !seenHardLink(fl->files, flp, &fileid)) {
-@@ -1204,10 +1216,6 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
+@@ -1204,10 +1222,6 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
  	    headerPutUint32(h, RPMTAG_FILEMTIMES, &rtime, 1);
  	}
  
@@ -64,7 +70,7 @@ index 8689ae3..b674efe 100644
  	{   rpm_rdev_t rrdev = (rpm_rdev_t) flp->fl_rdev;
  	    headerPutUint16(h, RPMTAG_FILERDEVS, &rrdev, 1);
  	}
-@@ -1280,6 +1288,20 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
+@@ -1280,6 +1294,20 @@ static void genCpioListAndHeader(FileList fl, rpmSpec spec, Package pkg, int isS
      }
      pkg->dpaths[npaths] = NULL;
  
@@ -85,7 +91,7 @@ index 8689ae3..b674efe 100644
      /* Use 64bit sizes always on v6, on older only if required. */
      if (spec->rpmformat < 6 && totalFileSize < UINT32_MAX) {
  	rpm_off_t totalsize = totalFileSize;
-@@ -1403,7 +1425,6 @@ static rpmRC addFile(FileList fl, const char * diskPath,
+@@ -1403,7 +1431,6 @@ static rpmRC addFile(FileList fl, const char * diskPath,
      const char *fileUname;
      const char *fileGname;
      rpmRC rc = RPMRC_FAIL; /* assume failure */
@@ -93,7 +99,7 @@ index 8689ae3..b674efe 100644
      /* Strip trailing slash. The special case of '/' path is handled below. */
      if (dp.size() > 0 && dp.back() == '/')
  	dp.pop_back();
-@@ -1487,7 +1508,7 @@ static rpmRC addFile(FileList fl, const char * diskPath,
+@@ -1487,7 +1514,7 @@ static rpmRC addFile(FileList fl, const char * diskPath,
  	return recurseDir(fl, diskPath);
      }
  
@@ -102,7 +108,7 @@ index 8689ae3..b674efe 100644
  
      /* Explicit %attr() always wins */
      if (fl->cur.ar.ar_fmodestr) {
-@@ -1684,7 +1705,9 @@ static rpmRC processMetadataFile(Package pkg, FileList fl,
+@@ -1684,7 +1711,9 @@ static rpmRC processMetadataFile(Package pkg, FileList fl,
      rc = RPMRC_OK;
  
      if (absolute)
@@ -112,7 +118,7 @@ index 8689ae3..b674efe 100644
  
  exit:
      free(apkt);
-@@ -2198,7 +2221,9 @@ static rpmRC processBinaryFile(Package pkg, FileList fl, const char * fileName,
+@@ -2198,7 +2227,9 @@ static rpmRC processBinaryFile(Package pkg, FileList fl, const char * fileName,
  	goto exit;
  
      for (i = 0; i < argc; i++)
@@ -122,7 +128,7 @@ index 8689ae3..b674efe 100644
      argvFree(argv);
  
  exit:
-@@ -2612,7 +2637,6 @@ static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
+@@ -2612,7 +2643,6 @@ static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
      /* Verify that file attributes scope over hardlinks correctly. */
      if (checkHardLinks(fl.files) && spec->rpmformat < 6)
  	(void) rpmlibNeedsFeature(pkg, "PartialHardlinkSets", "4.0.4-1");

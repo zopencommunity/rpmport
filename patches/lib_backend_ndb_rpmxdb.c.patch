@@ -1,8 +1,8 @@
 diff --git a/lib/backend/ndb/rpmxdb.c b/lib/backend/ndb/rpmxdb.c
-index 26085f72e..af9799613 100644
+index 26085f7..8ce953f 100644
 --- a/lib/backend/ndb/rpmxdb.c
 +++ b/lib/backend/ndb/rpmxdb.c
-@@ -18,13 +18,40 @@
+@@ -18,13 +18,41 @@
  #define htole32(x) OSSwapHostToLittleInt32(x)
  #define le32toh(x) OSSwapLittleToHostInt32(x)
  #else
@@ -17,6 +17,7 @@ index 26085f72e..af9799613 100644
  
 +#ifdef __MVS__
 +#include <stdint.h>
++#include <zos.h>
 +#define htole16(x) __bswap16(x)
 +#define le16toh(x) __bswap16(x)
 +#define htole32(x) __bswap32(x)
@@ -44,3 +45,15 @@ index 26085f72e..af9799613 100644
  struct rpmxdb_s {
      rpmpkgdb pkgdb;             /* main database */
      char *filename;
+@@ -591,6 +619,11 @@ int rpmxdbOpen(rpmxdb *xdbp, rpmpkgdb pkgdb, const char *filename, int flags, in
+ 	free(xdb);
+ 	return RPMRC_FAIL;
+     }
++#if defined(__MVS__)
++    /* New DB files must be binary-tagged, not zoslib's default 819 text. */
++    if ((flags & O_CREAT) && xdb->fd >= 0)
++        (void) __setfdbinary(xdb->fd);
++#endif
+     if (fstat(xdb->fd, &stb)) {
+ 	close(xdb->fd);
+ 	free(xdb->filename);

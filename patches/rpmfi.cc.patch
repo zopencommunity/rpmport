@@ -1,22 +1,8 @@
 diff --git a/lib/rpmfi.cc b/lib/rpmfi.cc
-index e5e0666..149eeb5 100644
+index e5e0666..7881e51 100644
 --- a/lib/rpmfi.cc
 +++ b/lib/rpmfi.cc
-@@ -34,6 +34,13 @@ using hardlinks = std::vector<int>;
- using nlinkHash = std::unordered_map<int,std::shared_ptr<hardlinks>>;
- 
- typedef int (*iterfunc)(rpmfi fi);
-+/* z/OS file tag kinds */
-+typedef enum {
-+	  ZOSTAG_NONE   = 0,    /* no tag / unknown */
-+	  ZOSTAG_TEXT   = 1,    /* text (convertible) */
-+	  ZOSTAG_BINARY = 2,    /* binary (no convert) */
-+	  ZOSTAG_MIXED  = 3     /* mixed/record-oriented */
-+} zostag_t;
- 
- struct rpmfi_s {
-     int i;			/*!< Current file index. */
-@@ -50,8 +57,17 @@ struct rpmfi_s {
+@@ -50,8 +50,17 @@ struct rpmfi_s {
  
      rpmfiles files;		/*!< File info set */
      rpmcpio_t archive;		/*!< Archive with payload */
@@ -34,7 +20,7 @@ index e5e0666..149eeb5 100644
  };
  
  struct rpmfn_s {
-@@ -124,6 +140,13 @@ struct rpmfiles_s {
+@@ -124,6 +133,13 @@ struct rpmfiles_s {
      rpm_loff_t * replacedSizes;	/*!< (TR_ADDED) */
      int magic;
      std::atomic_int nrefs;	/*!< Reference count. */
@@ -48,7 +34,7 @@ index e5e0666..149eeb5 100644
  };
  
  static int indexSane(rpmtd xd, rpmtd yd, rpmtd zd);
-@@ -142,6 +165,13 @@ rpmfi rpmfiLink(rpmfi fi)
+@@ -142,6 +158,13 @@ rpmfi rpmfiLink(rpmfi fi)
  	fi->nrefs++;
      return fi;
  }
@@ -62,7 +48,7 @@ index e5e0666..149eeb5 100644
  
  /*
   * Collect and validate file path data from header.
-@@ -509,7 +539,14 @@ rpm_mode_t rpmfilesFMode(rpmfiles fi, int ix)
+@@ -509,7 +532,14 @@ rpm_mode_t rpmfilesFMode(rpmfiles fi, int ix)
      if (fi != NULL && ix >= 0 && ix < rpmfilesFC(fi)) {
  	if (fi->fmodes != NULL)
  	    fmode = fi->fmodes[ix];
@@ -77,7 +63,7 @@ index e5e0666..149eeb5 100644
      return fmode;
  }
  
-@@ -813,7 +850,7 @@ int rpmfilesStat(rpmfiles fi, int ix, int flags, struct stat *sb)
+@@ -813,7 +843,7 @@ int rpmfilesStat(rpmfiles fi, int ix, int flags, struct stat *sb)
  	/* Only regular files and symlinks have a size */
  	if (S_ISREG(sb->st_mode) || S_ISLNK(sb->st_mode))
  	    sb->st_size = rpmfilesFSize(fi, ix);
@@ -86,7 +72,7 @@ index e5e0666..149eeb5 100644
  	if (user && rpmugUid(user, &sb->st_uid)) {
  	    if (warn)
  		rpmlog(RPMLOG_WARNING,
-@@ -827,7 +864,7 @@ int rpmfilesStat(rpmfiles fi, int ix, int flags, struct stat *sb)
+@@ -827,7 +857,7 @@ int rpmfilesStat(rpmfiles fi, int ix, int flags, struct stat *sb)
  			_("group %s does not exist - using %s\n"), group, GID_0_GROUP);
  	    sb->st_mode &= ~S_ISGID;	/* turn off sgid bit */
  	}
@@ -95,7 +81,7 @@ index e5e0666..149eeb5 100644
  	rc = 0;
      }
      return rc;
-@@ -1258,6 +1295,22 @@ rpmfiles rpmfilesFree(rpmfiles fi)
+@@ -1258,6 +1288,22 @@ rpmfiles rpmfilesFree(rpmfiles fi)
  	if (!(fi->fiflags & RPMFI_KEEPHEADER) && fi->h == NULL) {
  	    fi->fmtimes = _free(fi->fmtimes);
  	    fi->fmodes = _free(fi->fmodes);
@@ -118,7 +104,7 @@ index e5e0666..149eeb5 100644
  	    fi->fflags = _free(fi->fflags);
  	    fi->vflags = _free(fi->vflags);
  	    fi->fsizes = _free(fi->fsizes);
-@@ -1279,7 +1332,9 @@ rpmfiles rpmfilesFree(rpmfiles fi)
+@@ -1279,7 +1325,9 @@ rpmfiles rpmfilesFree(rpmfiles fi)
  
      fi->h = headerFree(fi->h);
      fi->pool = rpmstrPoolFree(fi->pool);
@@ -129,7 +115,7 @@ index e5e0666..149eeb5 100644
      delete fi->nlinks;
  
      delete fi;
-@@ -1573,8 +1628,68 @@ static int rpmfilesPopulate(rpmfiles fi, Header h, rpmfiFlags flags)
+@@ -1573,8 +1621,68 @@ static int rpmfilesPopulate(rpmfiles fi, Header h, rpmfiFlags flags)
      rpm_count_t totalfc = rpmfilesFC(fi);
  
      /* XXX TODO: all these should be sanity checked, ugh... */
@@ -200,7 +186,7 @@ index e5e0666..149eeb5 100644
      if (!(flags & RPMFI_NOFILEFLAGS))
  	_hgfi(h, RPMTAG_FILEFLAGS, &td, scareFlags, fi->fflags);
      if (!(flags & RPMFI_NOFILEVERIFYFLAGS))
-@@ -1706,6 +1821,10 @@ rpmfiles rpmfilesNew(rpmstrPool pool, Header h, rpmTagVal tagN, rpmfiFlags flags
+@@ -1706,6 +1814,10 @@ rpmfiles rpmfilesNew(rpmstrPool pool, Header h, rpmTagVal tagN, rpmfiFlags flags
  	    
  	if (rpmfilesPopulate(fi, h, flags))
  	    goto err;
@@ -211,7 +197,7 @@ index e5e0666..149eeb5 100644
      }
  
      /* freeze the pool to save memory, but only if private pool */
-@@ -2328,7 +2447,7 @@ ssize_t rpmfiArchiveRead(rpmfi fi, void * buf, size_t size)
+@@ -2328,7 +2440,7 @@ ssize_t rpmfiArchiveRead(rpmfi fi, void * buf, size_t size)
  int rpmfiArchiveReadToFilePsm(rpmfi fi, FD_t fd, int nodigest, rpmpsm psm)
  {
      if (fi == NULL || fi->archive == NULL || fd == NULL)
@@ -220,7 +206,7 @@ index e5e0666..149eeb5 100644
  
      rpm_loff_t left = rpmfiFSize(fi);
      const unsigned char * fidigest = NULL;
-@@ -2448,7 +2567,51 @@ char * rpmfileStrerror(int rc)
+@@ -2448,7 +2560,61 @@ char * rpmfileStrerror(int rc)
  	}
      } else {
  	rasprintf(&msg, _("%s: (error 0x%x)"), prefix, rc);
@@ -252,6 +238,16 @@ index e5e0666..149eeb5 100644
 +}
 +
 +/* Also provide accessors for the numeric/flag arrays you mentioned */
++int
++rpmfiFileHasTagData(rpmfi fi, int ix)
++{
++    if (fi == NULL || fi->files == NULL)
++        return 0;
++    if (ix < 0 || ix >= (int)rpmfilesFC(fi->files))
++        return 0;
++    return fi->files->fccsids != NULL;
++}
++
 +uint32_t
 +rpmfiFileGenValue(rpmfi fi, int ix)
 +{

@@ -1,5 +1,5 @@
 diff --git a/lib/fsm.cc b/lib/fsm.cc
-index 018d794..1de94be 100644
+index 018d794..018e086 100644
 --- a/lib/fsm.cc
 +++ b/lib/fsm.cc
 @@ -4,6 +4,10 @@
@@ -293,12 +293,20 @@ index 018d794..1de94be 100644
              }
  
  setmeta:
-@@ -1074,6 +1160,29 @@ setmeta:
+@@ -1074,6 +1160,37 @@ setmeta:
  
  	    if (!rc)
  		rc = fsmCommit(di.dirfd, &fp->fpath, fi, fp->action, fp->suffix);
 +#ifdef __MVS__
-+	    if (!rc && fp->setmeta) {
++    if (!rc && fp->setmeta) {
++        /* Warn when installing an untagged regular file (only when the
++         * package actually carries tag data, so legacy packages built
++         * without FILECCSID do not warn spuriously). */
++        if (S_ISREG(fp->sb.st_mode) && rpmfiFHasTagData(fi)
++         && rpmfiFccsid(fi) == 0)
++            rpmlog(RPMLOG_WARNING,
++                   _("file %s is untagged; its encoding is unspecified\n"),
++                   fp->fpath);
 +	        /* Apply CCSID/TXTFLAG/GENVALUE on final committed path */
 +		char fullpath[PATH_MAX];
 +		snprintf(fullpath, sizeof(fullpath), "%s/%s", rpmfiDN(fi), fp->fpath);
@@ -323,7 +331,7 @@ index 018d794..1de94be 100644
  
  	    if (!rc)
  		fp->stage = FILE_COMMIT;
-@@ -1089,6 +1198,7 @@ setmeta:
+@@ -1089,6 +1206,7 @@ setmeta:
  
      /* On failure, walk backwards and erase non-committed files */
      if (rc) {
@@ -331,7 +339,7 @@ index 018d794..1de94be 100644
  	fi = fsmIter(NULL, files, RPMFI_ITER_BACK, &di);
  	while ((fx = rpmfiNext(fi)) >= 0) {
  	    struct filedata_s *fp = &fdata[fx];
-@@ -1101,6 +1211,7 @@ setmeta:
+@@ -1101,6 +1219,7 @@ setmeta:
  		(void) fsmRemove(di.dirfd, fp->fpath, fp->sb.st_mode);
  	    }
  	}
@@ -339,7 +347,7 @@ index 018d794..1de94be 100644
      }
  
      rpmswAdd(rpmtsOp(ts, RPMTS_OP_UNCOMPRESS), fdOp(payload, FDSTAT_READ));
-@@ -1156,7 +1267,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
+@@ -1156,7 +1275,7 @@ int rpmPackageFilesRemove(rpmts ts, rpmte te, rpmfiles files,
          if (fp->action == FA_ERASE) {
  	    int missingok = (rpmfiFFlags(fi) & (RPMFILE_MISSINGOK | RPMFILE_GHOST));
  

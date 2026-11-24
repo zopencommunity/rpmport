@@ -1,0 +1,43 @@
+diff --git a/rpmio/rpmfileutil.cc b/rpmio/rpmfileutil.cc
+index 0b9dd8a..582538e 100644
+--- a/rpmio/rpmfileutil.cc
++++ b/rpmio/rpmfileutil.cc
+@@ -20,6 +20,16 @@
+ #include "rpmio_internal.hh"
+ #include "rpmmacro_internal.hh"
+ 
++#if defined(__MVS__)
++/* zoslib: verbatim byte I/O for payload content, digests and file-type
++ * sniffing. In a zoslib-linked ASCII build, open() may return converted
++ * (ASCII) bytes for untagged files or files tagged with a foreign CCSID
++ * (e.g. IBM-1047), silently transcoding packaged data while the header
++ * still records the original CCSID. __disableautocvt() yields raw bytes
++ * for all tag states (verified: untagged, 1047 txtflag=0/1, 819, binary). */
++#include <zos.h>
++#endif
++
+ #include "debug.h"
+ 
+ // CARv2+
+@@ -37,6 +47,10 @@ int rpmDoDigest(int algo, const char * fn,int asAscii, unsigned char * digest)
+     FD_t fd = Fopen(fn, "r.ufdio");
+ 
+     if (fd) {
++#if defined(__MVS__)
++	/* Digest must be computed over the raw on-disk bytes. */
++	(void) __disableautocvt(Fileno(fd));
++#endif
+ 	fdInitDigest(fd, algo, 0);
+ 	while ((rc = Fread(buf.data(), 1, buflen, fd)) > 0) {};
+ 	fdFiniDigest(fd, algo, (void **)&dig, &diglen, asAscii);
+@@ -168,6 +182,10 @@ int rpmFileIsCompressed(const char * file, rpmCompressedMagic * compressed)
+ 	if (fd) (void) Fclose(fd);
+ 	return 1;
+     }
++#if defined(__MVS__)
++    /* Compression magic must be read from the raw on-disk bytes. */
++    (void) __disableautocvt(Fileno(fd));
++#endif
+     nb = Fread(magic, sizeof(magic[0]), sizeof(magic), fd);
+     if (nb < 0) {
+ 	rpmlog(RPMLOG_ERR, _("File %s: %s\n"), file, Fstrerror(fd));

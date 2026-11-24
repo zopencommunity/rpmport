@@ -1,0 +1,28 @@
+diff --git a/lib/backend/ndb/rpmpkg.c b/lib/backend/ndb/rpmpkg.c
+index a7c1fbb..148fbf8 100644
+--- a/lib/backend/ndb/rpmpkg.c
++++ b/lib/backend/ndb/rpmpkg.c
+@@ -15,6 +15,11 @@
+ 
+ #include "rpmpkg.h"
+ 
++#if defined(__MVS__)
++/* zoslib: tag created database files as binary (see build/pack.cc) */
++#include <zos.h>
++#endif
++
+ static int rpmpkgVerifyblob(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned int blkoff, unsigned int blkcnt);
+ 
+ typedef struct pkgslot_s {
+@@ -877,6 +882,11 @@ int rpmpkgOpen(rpmpkgdb *pkgdbp, const char *filename, int flags, int mode)
+ 	free(pkgdb);
+         return RPMRC_FAIL;
+     }
++#if defined(__MVS__)
++    /* New DB files must be binary-tagged, not zoslib's default 819 text. */
++    if ((flags & O_CREAT) && pkgdb->fd >= 0)
++        (void) __setfdbinary(pkgdb->fd);
++#endif
+     if (fstat(pkgdb->fd, &stb)) {
+ 	close(pkgdb->fd);
+ 	free(pkgdb->filename);

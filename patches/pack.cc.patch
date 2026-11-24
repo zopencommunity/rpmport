@@ -1,0 +1,43 @@
+diff --git a/build/pack.cc b/build/pack.cc
+index 9045de3..35ac473 100644
+--- a/build/pack.cc
++++ b/build/pack.cc
+@@ -24,6 +24,11 @@
+ #include "rpmbuild_misc.hh"
+ #include "rpmmacro_internal.hh"
+ 
++#if defined(__MVS__)
++/* zoslib: verbatim byte I/O for payload content (see rpmio/rpmfileutil.cc) */
++#include <zos.h>
++#endif
++
+ #include "debug.h"
+ 
+ static int rpmPackageFilesArchive(rpmfiles fi, int isSrc,
+@@ -39,6 +44,12 @@ static int rpmPackageFilesArchive(rpmfiles fi, int isSrc,
+ 	const char *path = dpaths[rpmfiFX(archive)];
+ 
+ 	rfd = Fopen(path, "r.ufdio");
++#if defined(__MVS__)
++	/* Payload content must be archived byte-for-byte as it exists on
++	 * disk; defeat any zoslib autoconversion on the descriptor. */
++	if (rfd)
++	    (void) __disableautocvt(Fileno(rfd));
++#endif
+ 	if (Ferror(rfd)) {
+ 	    rc = RPMERR_OPEN_FAILED;
+ 	} else {
+@@ -521,6 +532,13 @@ static rpmRC writeRPM(Package pkg, unsigned char ** pkgidp,
+ 		fileName, Fstrerror(fd));
+ 	goto exit;
+     }
++#if defined(__MVS__)
++    /* Tag the package binary: zoslib's open() tags new files as 819 text
++     * by default, which invites codepage conversion by tag-honoring
++     * tools (e.g. EBCDIC-locale programs). A binary tag guarantees the
++     * package is never converted on any read path. */
++    (void) __setfdbinary(Fileno(fd));
++#endif
+ 
+     /* Write the lead section into the package. */
+     if (rpmLeadWrite(fd, pkg->header)) {
